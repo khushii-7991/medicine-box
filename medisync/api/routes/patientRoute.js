@@ -32,7 +32,7 @@ patientRouter.post('/login', async (req, res) => {
         const isMatch = await bcrypt.compare(password, patient.password);
         if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
 
-        const token = jwt.sign({ id: patient._id }, 'your_jwt_secret', { expiresIn: '1h' });
+        const token = jwt.sign({ id: patient._id, role: 'patient' }, 'your_jwt_secret', { expiresIn: '1h' });
 
         res.json({ token, user: { id: patient._id, name: patient.name, email: patient.email } });
     } catch (err) {
@@ -47,6 +47,24 @@ patientRouter.get('/profile', auth, async (req, res) => {
         res.json(patient);
     } catch (err) {
         res.status(500).json({ message: 'Error fetching profile' });
+    }
+});
+
+// GET /patient/all (Protected route - Only for doctors)
+patientRouter.get('/all', auth, async (req, res) => {
+    try {
+        console.log('Fetching patients, auth token:', req.headers.authorization);
+        console.log('User from auth middleware:', req.user);
+        
+        const patients = await Patient.find()
+            .select('name email age')
+            .sort({ name: 1 });
+        
+        console.log('Found patients:', patients);
+        res.json(patients);
+    } catch (err) {
+        console.error('Error in /patient/all:', err);
+        res.status(500).json({ message: 'Error fetching patients' });
     }
 });
 

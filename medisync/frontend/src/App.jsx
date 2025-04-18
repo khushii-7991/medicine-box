@@ -14,27 +14,154 @@ import UploadReports from './components/UploadReports';
 import HealthRemainders from './components/HealthRemainders';
 import EmergencyHelp from './components/EmergencyHelp';
 import MyAppointments from './components/MyAppointments';
+import LoginDoctor from './components/LoginDoctor';
+import LoginPatient from './components/LoginPatient';
+import MedicationSchedule from './components/MedicationSchedule';
+import ProtectedDoctorRoute from './components/ProtectedDoctorRoute';
+import ProtectedPatientRoute from './components/ProtectedPatientRoute';
+import Layout from './components/Layout';
+import { Toaster } from 'react-hot-toast';
 
 function App() {
 
   return (
     <BrowserRouter>
+      {/* Toast container for notifications */}
+      <Toaster 
+        position="top-right"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: '#363636',
+            color: '#fff',
+          },
+          success: {
+            style: {
+              background: '#22c55e',
+            },
+          },
+          error: {
+            style: {
+              background: '#ef4444',
+            },
+          },
+        }}
+      />
+      
       <Routes>
+        {/* Public routes */}
         <Route path='/' element={<Home />} />
-        <Route path='/patient' element={<Patient />} />
-        <Route path='/doctor' element={<Doctor />} />
-        <Route path='/add-prescription' element={<AddPrescription />} />
-        <Route path='/view-appointments' element={<ViewAppointments />} />
-        <Route path='/reports' element={<Reports />} />
-        <Route path='/emergency-requests' element={<Reports />} />
-        <Route path='/todays-appointment' element={<TodaysAppointment />} />
-        <Route path='/patient-list' element={<PatientList />} />
-        <Route path='/view-prescriptions' element={<ViewPrescriptions />} />
-        <Route path='/book-appointment' element={<BookAppointment />} />
-        <Route path='/upload-reports' element={<UploadReports />} />
-        <Route path='/health-remainders' element={<HealthRemainders />} />
-        <Route path='/emergency-help' element={<EmergencyHelp />} />
-        <Route path='/my-appointments' element={<MyAppointments />} />
+        <Route path='/login/doctor' element={<LoginDoctor />} />
+        <Route path='/login/patient' element={<LoginPatient />} />
+        
+        {/* Protected Patient routes */}
+        <Route path='/patient' element={
+          <ProtectedPatientRoute>
+            <Layout userType="patient">
+              <Patient />
+            </Layout>
+          </ProtectedPatientRoute>
+        } />
+        <Route path='/view-prescriptions' element={
+          <ProtectedPatientRoute>
+            <Layout userType="patient">
+              <ViewPrescriptions />
+            </Layout>
+          </ProtectedPatientRoute>
+        } />
+        <Route path='/medication-schedule' element={
+          <ProtectedPatientRoute>
+            <Layout userType="patient">
+              <MedicationSchedule />
+            </Layout>
+          </ProtectedPatientRoute>
+        } />
+        <Route path='/book-appointment' element={
+          <ProtectedPatientRoute>
+            <Layout userType="patient">
+              <BookAppointment />
+            </Layout>
+          </ProtectedPatientRoute>
+        } />
+        <Route path='/upload-reports' element={
+          <ProtectedPatientRoute>
+            <Layout userType="patient">
+              <UploadReports />
+            </Layout>
+          </ProtectedPatientRoute>
+        } />
+        <Route path='/health-remainders' element={
+          <ProtectedPatientRoute>
+            <Layout userType="patient">
+              <HealthRemainders />
+            </Layout>
+          </ProtectedPatientRoute>
+        } />
+        <Route path='/emergency-help' element={
+          <ProtectedPatientRoute>
+            <Layout userType="patient">
+              <EmergencyHelp />
+            </Layout>
+          </ProtectedPatientRoute>
+        } />
+        <Route path='/my-appointments' element={
+          <ProtectedPatientRoute>
+            <Layout userType="patient">
+              <MyAppointments />
+            </Layout>
+          </ProtectedPatientRoute>
+        } />
+        
+        {/* Protected Doctor routes */}
+        <Route path='/doctor' element={
+          <ProtectedDoctorRoute>
+            <Layout userType="doctor">
+              <Doctor />
+            </Layout>
+          </ProtectedDoctorRoute>
+        } />
+        <Route path='/add-prescription' element={
+          <ProtectedDoctorRoute>
+            <Layout userType="doctor">
+              <AddPrescription />
+            </Layout>
+          </ProtectedDoctorRoute>
+        } />
+        <Route path='/view-appointments' element={
+          <ProtectedDoctorRoute>
+            <Layout userType="doctor">
+              <ViewAppointments />
+            </Layout>
+          </ProtectedDoctorRoute>
+        } />
+        <Route path='/reports' element={
+          <ProtectedDoctorRoute>
+            <Layout userType="doctor">
+              <Reports />
+            </Layout>
+          </ProtectedDoctorRoute>
+        } />
+        <Route path='/emergency-requests' element={
+          <ProtectedDoctorRoute>
+            <Layout userType="doctor">
+              <Reports />
+            </Layout>
+          </ProtectedDoctorRoute>
+        } />
+        <Route path='/todays-appointment' element={
+          <ProtectedDoctorRoute>
+            <Layout userType="doctor">
+              <TodaysAppointment />
+            </Layout>
+          </ProtectedDoctorRoute>
+        } />
+        <Route path='/patient-list' element={
+          <ProtectedDoctorRoute>
+            <Layout userType="doctor">
+              <PatientList />
+            </Layout>
+          </ProtectedDoctorRoute>
+        } />
       </Routes>
     </BrowserRouter>
   )

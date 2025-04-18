@@ -3,14 +3,25 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
 const {
-    getSchedule,
-    updateStatus
+    getPatientSchedules,
+    getTodaySchedule,
+    updateDoseStatus,
+    getScheduleStats
 } = require('../controller/scheduleController');
 
-// // GET schedule for a prescription
- router.get('/:id/schedule', auth, getSchedule);
+// Get all schedules for a patient
+router.get('/patient', auth, getPatientSchedules);
+router.get('/patient/:patientId', auth, getPatientSchedules);
 
-// // POST update status (taken/skipped/partiaal)
- router.post('/update-status', auth, updateStatus);
+// Get today's schedule for a patient
+router.get('/today', auth, getTodaySchedule);
+router.get('/today/:patientId', auth, getTodaySchedule);
+
+// Update medication dose status
+router.post('/update-dose', auth, updateDoseStatus);
+
+// Get schedule statistics for a patient
+router.get('/stats', auth, getScheduleStats);
+router.get('/stats/:patientId', auth, getScheduleStats);
 
 module.exports = router;
