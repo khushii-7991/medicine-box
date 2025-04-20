@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react'
 
 const UploadReports = () => {
+    const [userName, setUserName] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('');
     const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
     const [categorySearch, setCategorySearch] = useState('');
     const [availableDoctors, setAvailableDoctors] = useState([]);
     const [selectedDoctor, setSelectedDoctor] = useState(null);
+    const [patientName, setPatientName] = useState('');
+    const [reportTitle, setReportTitle] = useState('');
+    const [selectedFile, setSelectedFile] = useState(null);
 
     // Mock feedback data - replace with your actual API
     const [previousReports, setPreviousReports] = useState([
@@ -111,6 +115,12 @@ const UploadReports = () => {
         ]
     };
 
+    // Get user data from localStorage
+    useEffect(() => {
+        const patientData = JSON.parse(localStorage.getItem('patientData') || '{}');
+        setUserName(patientData.name || 'User');
+    }, []);
+
     useEffect(() => {
         if (selectedCategory) {
             setAvailableDoctors(doctorsByCategory[selectedCategory] || []);
@@ -135,23 +145,56 @@ const UploadReports = () => {
         ));
     };
 
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setSelectedFile(file);
+        }
+    };
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        // Here you would typically send the data to your backend
+        console.log({
+            patientName,
+            category: selectedCategory,
+            doctor: selectedDoctor,
+            title: reportTitle,
+            file: selectedFile
+        });
+        // Reset form
+        setPatientName('');
+        setSelectedCategory('');
+        setCategorySearch('');
+        setSelectedDoctor(null);
+        setReportTitle('');
+        setSelectedFile(null);
+    };
+
     return (
         <div>
-            <div class="bg-gray-50 min-h-screen font-sans">
-                <nav class="bg-green-900 text-white p-5 flex justify-between items-center">
-                    <h1 class="text-2xl font-bold">📄 Upload Reports</h1>
+            <div className="bg-gray-50 min-h-screen font-sans">
+                <nav className="bg-green-900 text-white p-5 flex justify-between items-center">
+                    <h1 className="text-2xl font-bold">📄 Upload Reports</h1>
                     <div className="flex items-center space-x-4">
-                        <span className="text-gray-600">Welcome, {userName}</span>
+                        <span className="text-gray-300">Welcome, {userName}</span>
                     </div>
                 </nav>
 
-                <div class="max-w-4xl mx-auto py-12 px-6">
-                    <h2 class="text-3xl font-bold text-green-800 mb-6 text-center">Upload Patient Report</h2>
-                    <div class="space-y-8">
-                        <form class="space-y-5 bg-white p-6 rounded-2xl shadow-xl max-w-2xl mx-auto">
+                <div className="max-w-4xl mx-auto py-12 px-6">
+                    <h2 className="text-3xl font-bold text-green-800 mb-6 text-center">Upload Patient Report</h2>
+                    <div className="space-y-8">
+                        <form onSubmit={handleSubmit} className="space-y-5 bg-white p-6 rounded-2xl shadow-xl max-w-2xl mx-auto">
                             <div>
-                                <label class="block text-gray-700">Patient Name</label>
-                                <input type="text" placeholder="Enter patient name" class="w-full border rounded-lg p-3" />
+                                <label className="block text-gray-700">Patient Name</label>
+                                <input 
+                                    type="text" 
+                                    value={patientName}
+                                    onChange={(e) => setPatientName(e.target.value)}
+                                    placeholder="Enter patient name" 
+                                    className="w-full border rounded-lg p-3" 
+                                    required
+                                />
                             </div>
 
                             <div class="relative">
@@ -241,16 +284,33 @@ const UploadReports = () => {
                             )}
 
                             <div>
-                                <label class="block text-gray-700">Report Title</label>
-                                <input type="text" placeholder="Enter report title" class="w-full border rounded-lg p-3" />
+                                <label className="block text-gray-700">Report Title</label>
+                                <input 
+                                    type="text" 
+                                    value={reportTitle}
+                                    onChange={(e) => setReportTitle(e.target.value)}
+                                    placeholder="Enter report title" 
+                                    className="w-full border rounded-lg p-3" 
+                                    required
+                                />
                             </div>
 
                             <div>
-                                <label class="block text-gray-700">Upload File</label>
-                                <input type="file" class="w-full border rounded-lg p-3" />
+                                <label className="block text-gray-700">Upload File</label>
+                                <input 
+                                    type="file" 
+                                    onChange={handleFileChange}
+                                    className="w-full border rounded-lg p-3" 
+                                    required
+                                />
                             </div>
 
-                            <button type="submit" class="w-full bg-green-900 text-white py-3 rounded-xl hover:bg-green-800">Upload</button>
+                            <button 
+                                type="submit" 
+                                className="w-full bg-green-900 text-white py-3 rounded-xl hover:bg-green-800 transition-colors"
+                            >
+                                Upload
+                            </button>
                         </form>
 
                         {/* Previous Reports Section */}
@@ -309,7 +369,7 @@ const UploadReports = () => {
                     </div>
                 </div>
 
-                <footer class="text-center text-sm text-gray-500 p-5">
+                <footer className="text-center text-sm text-gray-500 p-5">
                     © 2025 Smart Medical System. All rights reserved.
                 </footer>
             </div>
