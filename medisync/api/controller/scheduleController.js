@@ -104,36 +104,73 @@ const getPatientSchedules = async (req, res) => {
  */
 const getTodaySchedule = async (req, res) => {
     try {
+        console.log('User from token:', req.user);
         const patientId = req.params.patientId || req.user.id;
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        console.log('Using patientId:', patientId);
         
-        // Find active schedules that include today
+        // Get today's date and reset time to midnight
+        const today = new Date();
+        const todayYear = today.getFullYear();
+        const todayMonth = today.getMonth();
+        const todayDay = today.getDate();
+        
+        console.log(`Today's date: ${todayYear}-${todayMonth + 1}-${todayDay}`);
+        
+        // Find active schedules for the patient
         const schedules = await Schedule.find({
             patientId,
-            isActive: true,
-            startDate: { $lte: today },
-            endDate: { $gte: today }
+            isActive: true
         }).populate('prescriptionId', 'notes');
         
-        // Extract today's schedule from each active schedule
-        const todaySchedules = schedules.map(schedule => {
-            const todaySchedule = schedule.dailySchedule.find(day => {
-                const dayDate = new Date(day.date);
-                dayDate.setHours(0, 0, 0, 0);
-                return dayDate.getTime() === today.getTime();
-            });
-            
-            return {
-                scheduleId: schedule._id,
-                prescriptionId: schedule.prescriptionId,
-                prescriptionNotes: schedule.prescriptionId.notes,
-                date: today,
-                medicines: todaySchedule ? todaySchedule.medicines : [],
-                completed: todaySchedule ? todaySchedule.completed : false
-            };
-        });
+        console.log(`Found ${schedules.length} active schedules for patient ${patientId}`);
         
+        if (schedules.length === 0) {
+            return res.json([]);
+        }
+        
+        // Extract today's schedule from each active schedule
+        const todaySchedules = [];
+        
+        for (const schedule of schedules) {
+            console.log(`Processing schedule ID: ${schedule._id}`);
+            console.log(`Daily schedule entries: ${schedule.dailySchedule.length}`);
+            
+            // Find today's entry in the daily schedule by comparing year, month, and day
+            let todaySchedule = null;
+            
+            for (const day of schedule.dailySchedule) {
+                const dayDate = new Date(day.date);
+                const dayYear = dayDate.getFullYear();
+                const dayMonth = dayDate.getMonth();
+                const dayDay = dayDate.getDate();
+                
+                console.log(`Schedule date: ${dayYear}-${dayMonth + 1}-${dayDay}`);
+                
+                // Compare year, month, and day instead of timestamps
+                if (dayYear === todayYear && dayMonth === todayMonth && dayDay === todayDay) {
+                    console.log('Found matching date by year, month, and day!');
+                    todaySchedule = day;
+                    break;
+                }
+            }
+            
+            if (todaySchedule && todaySchedule.medicines && todaySchedule.medicines.length > 0) {
+                console.log(`Found ${todaySchedule.medicines.length} medicines for today`);
+                
+                todaySchedules.push({
+                    scheduleId: schedule._id,
+                    prescriptionId: schedule.prescriptionId,
+                    prescriptionNotes: schedule.prescriptionId ? schedule.prescriptionId.notes : '',
+                    date: today,
+                    medicines: todaySchedule.medicines,
+                    completed: todaySchedule.completed
+                });
+            } else {
+                console.log('No medicines found for today in this schedule');
+            }
+        }
+        
+        console.log(`Returning ${todaySchedules.length} schedule entries with medicines`);
         res.json(todaySchedules);
     } catch (error) {
         console.error('Error fetching today\'s schedule:', error);
@@ -159,20 +196,27 @@ const updateDoseStatus = async (req, res) => {
         }
         
         // Find the day in the schedule
-        const scheduleDate = new Date(date);
-        scheduleDate.setHours(0, 0, 0, 0);
+        const scheduleDate = new Date(date || new Date());
+        const targetYear = scheduleDate.getFullYear();
+        const targetMonth = scheduleDate.getMonth();
+        const targetDay = scheduleDate.getDate();
+        
+        console.log(`Looking for date: ${targetYear}-${targetMonth + 1}-${targetDay} in schedule`);
         
         const dayIndex = schedule.dailySchedule.findIndex(day => {
             const dayDate = new Date(day.date);
-            dayDate.setHours(0, 0, 0, 0);
-            return dayDate.getTime() === scheduleDate.getTime();
+            const dayYear = dayDate.getFullYear();
+            const dayMonth = dayDate.getMonth();
+            const dayDay = dayDate.getDate();
+            
+            return dayYear === targetYear && dayMonth === targetMonth && dayDay === targetDay;
         });
         
         if (dayIndex === -1) {
-            return res.status(404).json({ message: 'Date not found in schedule' });
+            return res.status(404).json({ message: 'Day not found in schedule' });
         }
         
-        // Find the medicine in the day
+        // Find the medicine
         const medicineIndex = schedule.dailySchedule[dayIndex].medicines.findIndex(
             med => med.medicineId === medicineId
         );
@@ -186,22 +230,21 @@ const updateDoseStatus = async (req, res) => {
             return res.status(400).json({ message: 'Invalid dose index' });
         }
         
-        // Update the dose
         schedule.dailySchedule[dayIndex].medicines[medicineIndex].doses[doseIndex].status = status;
-        schedule.dailySchedule[dayIndex].medicines[medicineIndex].doses[doseIndex].takenAt = 
-            status === 'taken' ? new Date() : null;
-            
+        schedule.dailySchedule[dayIndex].medicines[medicineIndex].doses[doseIndex].takenAt = new Date();
+        
         if (notes) {
             schedule.dailySchedule[dayIndex].medicines[medicineIndex].doses[doseIndex].notes = notes;
         }
         
         // Check if all doses for the day are taken or skipped
-        const allDosesCompleted = schedule.dailySchedule[dayIndex].medicines.every(medicine => 
-            medicine.doses.every(dose => dose.status === 'taken' || dose.status === 'skipped')
-        );
+        const allDosesCompleted = schedule.dailySchedule[dayIndex].medicines.every(medicine => {
+            return medicine.doses.every(dose => dose.status === 'taken' || dose.status === 'skipped');
+        });
         
-        // Update day completion status
-        schedule.dailySchedule[dayIndex].completed = allDosesCompleted;
+        if (allDosesCompleted) {
+            schedule.dailySchedule[dayIndex].completed = true;
+        }
         
         // Update completion rate
         const totalDoses = schedule.dailySchedule.reduce((total, day) => {
@@ -238,10 +281,13 @@ const updateDoseStatus = async (req, res) => {
  */
 const getScheduleStats = async (req, res) => {
     try {
+        console.log('User from token in stats:', req.user);
         const patientId = req.params.patientId || req.user.id;
+        console.log('Using patientId for stats:', patientId);
         
         // Get all schedules for the patient
         const schedules = await Schedule.find({ patientId });
+        console.log(`Found ${schedules.length} schedules for stats`);
         
         // Calculate statistics
         const totalSchedules = schedules.length;
@@ -269,7 +315,11 @@ const getScheduleStats = async (req, res) => {
         
         // Get today's doses
         const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        const todayYear = today.getFullYear();
+        const todayMonth = today.getMonth();
+        const todayDay = today.getDate();
+        
+        console.log(`Looking for today's doses: ${todayYear}-${todayMonth + 1}-${todayDay}`);
         
         let todayTotalDoses = 0;
         let todayTakenDoses = 0;
@@ -278,11 +328,15 @@ const getScheduleStats = async (req, res) => {
         schedules.forEach(schedule => {
             const todaySchedule = schedule.dailySchedule.find(day => {
                 const dayDate = new Date(day.date);
-                dayDate.setHours(0, 0, 0, 0);
-                return dayDate.getTime() === today.getTime();
+                const dayYear = dayDate.getFullYear();
+                const dayMonth = dayDate.getMonth();
+                const dayDay = dayDate.getDate();
+                
+                return dayYear === todayYear && dayMonth === todayMonth && dayDay === todayDay;
             });
             
             if (todaySchedule) {
+                console.log(`Found today's schedule in schedule ID: ${schedule._id}`);
                 todaySchedule.medicines.forEach(medicine => {
                     medicine.doses.forEach(dose => {
                         todayTotalDoses++;
@@ -296,7 +350,7 @@ const getScheduleStats = async (req, res) => {
             }
         });
         
-        res.json({
+        const statsResponse = {
             totalSchedules,
             activeSchedules,
             completedSchedules,
@@ -308,7 +362,10 @@ const getScheduleStats = async (req, res) => {
                 adherenceRate: todayTotalDoses > 0 ? 
                     (todayTakenDoses / todayTotalDoses) * 100 : 0
             }
-        });
+        };
+        
+        console.log('Sending stats response:', statsResponse);
+        res.json(statsResponse);
     } catch (error) {
         console.error('Error fetching schedule statistics:', error);
         res.status(500).json({ message: 'Failed to fetch schedule statistics' });

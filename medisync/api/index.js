@@ -35,7 +35,7 @@ app.get('/', (req, res) => {
 app.use('/doctor', doctorRoutes);
 app.use('/patient', patientRouter);
 app.use('/prescription', prescriptionRouter);
-app.use('/api/schedule', scheduleRoutes);
+app.use('/schedule', scheduleRoutes);
 
 // Error handling middleware
 app.use((req, res, next) => {
