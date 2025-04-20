@@ -14,14 +14,14 @@ const LoginDoctor = () => {
   const location = useLocation();
   
   // Check if there's a redirect path from a protected route
-  const from = location.state?.from || '/doctor';
+  const from = location.state?.from || '/doctor-profile';
   
   useEffect(() => {
     // Check if already logged in
     const token = localStorage.getItem('doctorToken');
     if (token) {
       toast.success('Already logged in as doctor');
-      navigate('/doctor');
+      navigate('/doctor-profile');
     }
   }, [navigate]);
 
@@ -43,6 +43,7 @@ const LoginDoctor = () => {
       });
       
       const data = await response.json();
+      console.log(data);
       
       toast.dismiss(loadingToast);
       
@@ -52,15 +53,18 @@ const LoginDoctor = () => {
       }
 
       if (response.ok) {
-        if (!isSignup) {
+        if (data.success) {
           localStorage.setItem('doctorToken', data.token);
-          localStorage.setItem('doctorData', JSON.stringify(data.user));
+          localStorage.setItem('doctorData', JSON.stringify(data.doctor));
           toast.success('Login successful!');
-        }
-        if (isSignup) {
+          navigate('/doctor-profile');
+        } else if (isSignup) {
           setIsSignup(false);
           toast.success('Registration successful! Please login.');
           setFormData({ name: '', email: '', password: '' });
+          return;
+        } else {
+          toast.error(data.message || 'Login failed');
           return;
         }
         navigate(from);

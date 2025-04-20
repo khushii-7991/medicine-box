@@ -4,7 +4,7 @@ import axios from 'axios';
 import { 
     FiCalendar, FiClock, FiFileText, FiUpload, FiBell, 
     FiPhoneCall, FiActivity, FiPieChart, FiTrendingUp, FiUser, FiCheckCircle, FiAlertTriangle,
-    FiPlus, FiCheck, FiX, FiLogOut
+    FiPlus, FiCheck, FiX, FiLogOut, FiSearch
 } from 'react-icons/fi';
 import { 
     AreaChart, Area, BarChart, Bar, PieChart, Pie, LineChart, Line, 
@@ -228,6 +228,25 @@ const Patient = () => {
                     </div>
                 ) : (
                     <>
+                        {/* Feature Cards */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                            {/* Find Doctor Card */}
+                            <div onClick={() => navigate('/find-doctor')} className="bg-white rounded-xl shadow-md p-6 cursor-pointer transform transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <p className="text-sm font-medium text-gray-600">Find Doctor</p>
+                                        <p className="text-2xl font-bold text-gray-800 mt-1">Search</p>
+                                    </div>
+                                    <div className="bg-indigo-100 p-3 rounded-full">
+                                        <FiSearch className="h-6 w-6 text-indigo-600" />
+                                    </div>
+                                </div>
+                                <div className="mt-4">
+                                    <p className="text-sm text-indigo-600 hover:text-indigo-800 font-medium">Find doctors near you →</p>
+                                </div>
+                            </div>
+                        </div>
+
                         {/* Stats Cards */}
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                             <div className="bg-white rounded-xl shadow-md p-6 border-t-4 border-blue-500 transform transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
@@ -457,6 +476,17 @@ const Patient = () => {
                                             <div className="flex items-center">
                                                 <FiFileText className="mr-3 h-5 w-5" />
                                                 <span>View Prescriptions</span>
+                                            </div>
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 group-hover:translate-x-1 transition-transform duration-200" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
+                                            </svg>
+                                        </button>
+                                    </a>
+                                    <a href="/find-doctor" className="block">
+                                        <button className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-indigo-50 to-indigo-100 text-indigo-700 rounded-lg hover:shadow-md transition-all duration-300 group-hover:from-indigo-100 hover:to-indigo-200 transition-all duration-200">
+                                            <div className="flex items-center">
+                                                <FiSearch className="mr-3 h-5 w-5" />
+                                                <span>Find Doctor</span>
                                             </div>
                                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 group-hover:translate-x-1 transition-transform duration-200" viewBox="0 0 20 20" fill="currentColor">
                                                 <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
