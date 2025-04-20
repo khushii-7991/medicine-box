@@ -29,9 +29,7 @@ const MedicineTracking = ({ prescriptionId }) => {
     const [newMedicine, setNewMedicine] = useState({
         name: '',
         dosage: '',
-        frequency: '',
-        startDate: '',
-        endDate: ''
+        timing: 'Morning'
     });
     const [currentStreak, setCurrentStreak] = useState(0);
     const [reminders, setReminders] = useState([]);
@@ -102,10 +100,23 @@ const MedicineTracking = ({ prescriptionId }) => {
                 // Get reminders data from localStorage
                 const reminders = JSON.parse(localStorage.getItem('reminders') || '[]');
                 
-                // For default prescription, get all reminders
-                const prescriptionReminders = prescriptionId === 'default' 
-                    ? reminders 
-                    : reminders.filter(r => r.prescriptionId === prescriptionId);
+                // Get medicines from reminders
+                const reminderMedicines = reminders.reduce((acc, reminder) => {
+                    if (!acc.some(m => m.name === reminder.medicineName)) {
+                        acc.push({
+                            name: reminder.medicineName,
+                            dosage: reminder.dosage,
+                            timing: reminder.timing
+                        });
+                    }
+                    return acc;
+                }, []);
+
+                // Get manually added medicines
+                const manualMedicines = JSON.parse(localStorage.getItem('manualMedicines') || '[]');
+
+                // Combine both lists
+                setMedicines([...reminderMedicines, ...manualMedicines]);
 
                 // Generate tracking data for each day
                 const startDate = new Date();
@@ -113,26 +124,54 @@ const MedicineTracking = ({ prescriptionId }) => {
                 const days = [];
                 
                 for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
-                    const dayReminders = prescriptionReminders.filter(r => {
+                    // Get all reminders for this day
+                    const dayReminders = reminders.filter(r => {
                         const reminderDate = new Date(r.date);
                         return reminderDate.toDateString() === date.toDateString();
                     });
 
+                    // Group reminders by medicine and timing
+                    const medicineGroups = dayReminders.reduce((acc, reminder) => {
+                        const key = `${reminder.medicineName}-${reminder.timing}`;
+                        if (!acc[key]) {
+                            acc[key] = {
+                                medicineName: reminder.medicineName,
+                                timing: reminder.timing,
+                                reminders: []
+                            };
+                        }
+                        acc[key].reminders.push(reminder);
+                        return acc;
+                    }, {});
+
                     let status = 'missed'; // Default status
-                    if (dayReminders.length > 0) {
-                        const takenCount = dayReminders.filter(r => r.completed).length;
-                        const totalCount = dayReminders.length;
+                    
+                    if (Object.keys(medicineGroups).length > 0) {
+                        // Check if all medicines and their timings are completed
+                        const allCompleted = Object.values(medicineGroups).every(group => 
+                            group.reminders.every(r => r.completed)
+                        );
                         
-                        if (takenCount === totalCount) {
+                        // Check if any medicine or timing is completed
+                        const anyCompleted = Object.values(medicineGroups).some(group => 
+                            group.reminders.some(r => r.completed)
+                        );
+
+                        if (allCompleted) {
                             status = 'completed';
-                        } else if (takenCount > 0) {
+                        } else if (anyCompleted) {
                             status = 'partial';
                         }
                     }
 
                     days.push({
                         date: new Date(date),
-                        status
+                        status,
+                        details: Object.values(medicineGroups).map(group => ({
+                            medicineName: group.medicineName,
+                            timing: group.timing,
+                            completed: group.reminders.every(r => r.completed)
+                        }))
                     });
                 }
 
@@ -147,6 +186,16 @@ const MedicineTracking = ({ prescriptionId }) => {
         };
 
         fetchTrackingData();
+
+        // Listen for reminder changes
+        const handleRemindersChange = () => {
+            fetchTrackingData();
+        };
+
+        window.addEventListener('remindersChanged', handleRemindersChange);
+        return () => {
+            window.removeEventListener('remindersChanged', handleRemindersChange);
+        };
     }, [prescriptionId]);
 
     useEffect(() => {
@@ -230,9 +279,7 @@ const MedicineTracking = ({ prescriptionId }) => {
         setNewMedicine({
             name: '',
             dosage: '',
-            frequency: 'Once a Day',
-            startDate: new Date().toISOString().split('T')[0],
-            endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+            timing: 'Morning'
         });
         setShowAddMedicineModal(false);
     };
@@ -260,20 +307,19 @@ const MedicineTracking = ({ prescriptionId }) => {
             id: Date.now().toString()
         };
 
-        // Add to streak medicines
-        const updatedStreakMedicines = [...selectedMedicines, medicineToAdd];
-        setSelectedMedicines(updatedStreakMedicines);
-        localStorage.setItem('streakMedicines', JSON.stringify(updatedStreakMedicines));
+        // Add to medicines list
+        setMedicines([...medicines, medicineToAdd]);
+        
+        // Save to localStorage
+        const storedMedicines = JSON.parse(localStorage.getItem('manualMedicines') || '[]');
+        localStorage.setItem('manualMedicines', JSON.stringify([...storedMedicines, medicineToAdd]));
 
         // Reset form
         setNewMedicine({
             name: '',
             dosage: '',
-            frequency: 'Once a Day',
-            startDate: new Date().toISOString().split('T')[0],
-            endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+            timing: 'Morning'
         });
-
         setShowManualForm(false);
     };
 
@@ -389,65 +435,47 @@ const MedicineTracking = ({ prescriptionId }) => {
 
             {/* Medicines List Section */}
             <div className="mt-8">
-                <h3 className="text-xl font-semibold mb-4">Your Medicines</h3>
-                {streakMedicines.length === 0 ? (
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-xl font-semibold">Your Medicines</h3>
+                    <button
+                        onClick={() => setShowManualForm(true)}
+                        className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 flex items-center gap-2"
+                    >
+                        <FaPlus /> Add Medicine
+                    </button>
+                </div>
+                {medicines.length === 0 ? (
                     <div className="text-center py-8 bg-gray-50 rounded-lg">
                         <p className="text-gray-600 mb-4">No medicines added yet</p>
-                        <div className="flex justify-center gap-2">
-                            <button
-                                onClick={() => navigate('/view-prescriptions')}
-                                className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 flex items-center gap-2"
-                            >
-                                <FaPlus /> Add from Prescriptions
-                            </button>
-                            <button
-                                onClick={() => setShowManualForm(true)}
-                                className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 flex items-center gap-2"
-                            >
-                                <FaPlus /> Add Manually
-                            </button>
-                        </div>
+                        <p className="text-sm text-gray-500">Add medicines in the Health Reminders page or manually here</p>
                     </div>
                 ) : (
                     <div className="space-y-4">
-                        {streakMedicines.map(medicine => (
+                        {medicines.map(medicine => (
                             <div
-                                key={medicine.id}
+                                key={medicine.id || medicine.name}
                                 className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
                             >
                                 <div className="flex-1">
                                     <h4 className="font-medium text-sm">{medicine.name}</h4>
                                     <p className="text-xs text-gray-600">
-                                        {medicine.dosage} - {medicine.frequency}
+                                        {medicine.dosage} - {medicine.timing}
                                     </p>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <p className="text-xs text-gray-500 whitespace-nowrap">
-                                        {new Date(medicine.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {new Date(medicine.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                    </p>
+                                {medicine.id && (
                                     <button
-                                        onClick={() => handleRemoveMedicine(medicine.id)}
+                                        onClick={() => {
+                                            const updatedMedicines = medicines.filter(m => m.id !== medicine.id);
+                                            setMedicines(updatedMedicines);
+                                            localStorage.setItem('manualMedicines', JSON.stringify(updatedMedicines.filter(m => m.id)));
+                                        }}
                                         className="text-red-500 hover:text-red-600 flex items-center gap-0.5 text-xs"
                                     >
                                         <FaTimes className="text-xs" /> Remove
                                     </button>
-                                </div>
+                                )}
                             </div>
                         ))}
-                        <div className="flex justify-center gap-2 mt-4">
-                            <button
-                                onClick={() => navigate('/view-prescriptions')}
-                                className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 flex items-center gap-2"
-                            >
-                                <FaPlus /> Add More from Prescriptions
-                            </button>
-                            <button
-                                onClick={() => setShowManualForm(true)}
-                                className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 flex items-center gap-2"
-                            >
-                                <FaPlus /> Add Manually
-                            </button>
-                        </div>
                     </div>
                 )}
             </div>
@@ -468,7 +496,7 @@ const MedicineTracking = ({ prescriptionId }) => {
                                         onClick={() => handleSelectMedicine(medicine)}
                                         className="p-2 hover:bg-gray-100 cursor-pointer rounded"
                                     >
-                                        {medicine.name} - {medicine.dosage} ({medicine.frequency})
+                                        {medicine.name} - {medicine.dosage} ({medicine.timing})
                                     </div>
                                 ))}
                             </div>
@@ -492,13 +520,14 @@ const MedicineTracking = ({ prescriptionId }) => {
                                 className="w-full p-2 border rounded mb-2"
                             />
                             <select
-                                value={newMedicine.frequency}
-                                onChange={(e) => setNewMedicine({ ...newMedicine, frequency: e.target.value })}
+                                value={newMedicine.timing}
+                                onChange={(e) => setNewMedicine({ ...newMedicine, timing: e.target.value })}
                                 className="w-full p-2 border rounded mb-2"
                             >
-                                <option value="Once a Day">Once a Day</option>
-                                <option value="2 Times a Day">2 Times a Day</option>
-                                <option value="3 Times a Day">3 Times a Day</option>
+                                <option value="Morning">Morning</option>
+                                <option value="Afternoon">Afternoon</option>
+                                <option value="Evening">Evening</option>
+                                <option value="Night">Night</option>
                             </select>
                         </div>
 
@@ -520,43 +549,10 @@ const MedicineTracking = ({ prescriptionId }) => {
                 </div>
             )}
 
-            {/* Remove Medicine Modal */}
-            {showRemoveMedicineModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                    <div className="bg-white rounded-lg p-6 w-full max-w-md">
-                        <h3 className="text-xl font-bold mb-4">Remove Medicine</h3>
-                        <div className="max-h-60 overflow-y-auto">
-                            {selectedMedicines.map(medicine => (
-                                <div
-                                    key={medicine.id}
-                                    className="flex items-center justify-between p-2 hover:bg-gray-100 rounded"
-                                >
-                                    <span>{medicine.name} - {medicine.dosage} ({medicine.frequency})</span>
-                                    <button
-                                        onClick={() => handleRemoveMedicine(medicine.id)}
-                                        className="text-red-500 hover:text-red-600"
-                                    >
-                                        <FaTimes />
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                        <div className="flex justify-end mt-4">
-                            <button
-                                onClick={() => setShowRemoveMedicineModal(false)}
-                                className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600"
-                            >
-                                Close
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
             {/* Manual Medicine Addition Modal */}
             {showManualForm && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg p-6 max-w-md w-full">
+                <div className="fixed inset-0 bg-white bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-lg">
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="text-xl font-semibold">Add New Medicine</h3>
                             <button
@@ -593,46 +589,25 @@ const MedicineTracking = ({ prescriptionId }) => {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Frequency
+                                    Timing
                                 </label>
                                 <select
-                                    value={newMedicine.frequency}
-                                    onChange={(e) => setNewMedicine({ ...newMedicine, frequency: e.target.value })}
+                                    value={newMedicine.timing}
+                                    onChange={(e) => setNewMedicine({ ...newMedicine, timing: e.target.value })}
                                     className="w-full p-2 border rounded"
                                 >
-                                    <option value="Once a Day">Once a Day</option>
-                                    <option value="2 Times a Day">2 Times a Day</option>
-                                    <option value="3 Times a Day">3 Times a Day</option>
+                                    <option value="Morning">Morning</option>
+                                    <option value="Afternoon">Afternoon</option>
+                                    <option value="Evening">Evening</option>
+                                    <option value="Night">Night</option>
                                 </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Start Date
-                                </label>
-                                <input
-                                    type="date"
-                                    value={newMedicine.startDate}
-                                    onChange={(e) => setNewMedicine({ ...newMedicine, startDate: e.target.value })}
-                                    className="w-full p-2 border rounded"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    End Date
-                                </label>
-                                <input
-                                    type="date"
-                                    value={newMedicine.endDate}
-                                    onChange={(e) => setNewMedicine({ ...newMedicine, endDate: e.target.value })}
-                                    className="w-full p-2 border rounded"
-                                />
                             </div>
                             <div className="flex gap-2">
                                 <button
                                     onClick={handleAddManualMedicine}
                                     className="flex-1 bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600"
                                 >
-                                    Add to Streak
+                                    Add Medicine
                                 </button>
                                 <button
                                     onClick={() => setShowManualForm(false)}

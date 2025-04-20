@@ -1,17 +1,79 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { FaPlus } from 'react-icons/fa'
 
 const ViewPrescriptions = () => {
+    const [userName, setUserName] = useState('');
     const [symptoms, setSymptoms] = useState('');
     const [medicineRecommendations, setMedicineRecommendations] = useState([]);
     const [showMedicineRecommendations, setShowMedicineRecommendations] = useState(false);
     const [addedMedicines, setAddedMedicines] = useState([]);
     const [showRecommendationButton, setShowRecommendationButton] = useState(true);
-    const [prescriptions, setPrescriptions] = useState([
-        { medicine: 'Paracetamol', dosage: '2 Times a Day', timing: 'After Meal', duration: '5 Days' },
-        { medicine: 'Vitamin C', dosage: 'Once a Day', timing: 'Before Meal', duration: '10 Days' }
-    ]);
-    const [addedToStreak, setAddedToStreak] = useState([]);
+    const [prescriptions, setPrescriptions] = useState([]);
+    const [doctorRecommendations, setDoctorRecommendations] = useState([]);
+    const [showDoctorRecommendations, setShowDoctorRecommendations] = useState(false);
+    const [selectedDoctor, setSelectedDoctor] = useState(null);
+    const [showPrescriptionForm, setShowPrescriptionForm] = useState(false);
+    const [prescriptionRequest, setPrescriptionRequest] = useState({
+        symptoms: '',
+        additionalNotes: '',
+        preferredMedicines: ''
+    });
+    const [showManualForm, setShowManualForm] = useState(false);
+    const [newMedicine, setNewMedicine] = useState({
+        medicine: '',
+        dosage: '',
+        timing: '',
+        duration: ''
+    });
+    const [prescriptionResponses, setPrescriptionResponses] = useState([]);
+    const [addedMedicinesFromResponses, setAddedMedicinesFromResponses] = useState([]);
+
+    useEffect(() => {
+        // Get user data from localStorage
+        const patientData = JSON.parse(localStorage.getItem('patientData') || '{}');
+        setUserName(patientData.name || 'User');
+
+        // Load prescriptions from localStorage if available
+        const storedPrescriptions = JSON.parse(localStorage.getItem('prescriptions') || '[]');
+        if (storedPrescriptions.length > 0) {
+            setPrescriptions(storedPrescriptions);
+        } else {
+            // Set default prescriptions if none exist
+            setPrescriptions([
+                { medicine: 'Paracetamol', dosage: '2 Times a Day', timing: 'After Meal', duration: '5 Days' },
+                { medicine: 'Vitamin C', dosage: 'Once a Day', timing: 'Before Meal', duration: '10 Days' }
+            ]);
+        }
+
+        // Load prescription responses from localStorage if available
+        const storedResponses = JSON.parse(localStorage.getItem('prescriptionResponses') || '[]');
+        if (storedResponses.length > 0) {
+            setPrescriptionResponses(storedResponses);
+        } else {
+            // Set default responses if none exist
+            setPrescriptionResponses([
+                {
+                    id: 1,
+                    doctor: 'Dr. Sarah Johnson',
+                    date: '2024-03-15',
+                    status: 'approved',
+                    medicines: [
+                        { name: 'Paracetamol', dosage: '500mg', frequency: '3 times a day', duration: '5 days' },
+                        { name: 'Vitamin C', dosage: '500mg', frequency: 'Once daily', duration: '10 days' }
+                    ],
+                    notes: 'Take with plenty of water. Avoid alcohol while on medication.'
+                },
+                {
+                    id: 2,
+                    doctor: 'Dr. Michael Chen',
+                    date: '2024-03-14',
+                    status: 'pending',
+                    medicines: [],
+                    notes: 'Reviewing your symptoms and medical history.'
+                }
+            ]);
+        }
+    }, []);
 
     // Mock medicine database - replace with your actual API
     const medicineDatabase = {
@@ -187,27 +249,75 @@ const ViewPrescriptions = () => {
         ]
     };
     
+    // Mock doctor database - replace with your actual API
+    const doctorDatabase = {
+        'fever': [
+            { name: 'Dr. Sarah Johnson', specialization: 'General Physician', experience: '15 years', rating: 4.8, available: 'Today, 2:00 PM' },
+            { name: 'Dr. Michael Chen', specialization: 'Internal Medicine', experience: '12 years', rating: 4.7, available: 'Today, 4:30 PM' }
+        ],
+        'headache': [
+            { name: 'Dr. Emily Parker', specialization: 'Neurologist', experience: '10 years', rating: 4.9, available: 'Tomorrow, 10:00 AM' },
+            { name: 'Dr. Robert Wilson', specialization: 'Neurologist', experience: '8 years', rating: 4.6, available: 'Today, 3:00 PM' }
+        ],
+        'cough': [
+            { name: 'Dr. James Miller', specialization: 'Pulmonologist', experience: '20 years', rating: 4.9, available: 'Today, 11:00 AM' },
+            { name: 'Dr. Lisa Brown', specialization: 'ENT Specialist', experience: '15 years', rating: 4.7, available: 'Tomorrow, 9:00 AM' }
+        ],
+        'cold': [
+            { name: 'Dr. Lisa Brown', specialization: 'ENT Specialist', experience: '15 years', rating: 4.7, available: 'Tomorrow, 9:00 AM' },
+            { name: 'Dr. Sarah Johnson', specialization: 'General Physician', experience: '15 years', rating: 4.8, available: 'Today, 2:00 PM' }
+        ],
+        'fever and headache': [
+            { name: 'Dr. Sarah Johnson', specialization: 'General Physician', experience: '15 years', rating: 4.8, available: 'Today, 2:00 PM' },
+            { name: 'Dr. Emily Parker', specialization: 'Neurologist', experience: '10 years', rating: 4.9, available: 'Tomorrow, 10:00 AM' }
+        ],
+        'cold and cough': [
+            { name: 'Dr. James Miller', specialization: 'Pulmonologist', experience: '20 years', rating: 4.9, available: 'Today, 11:00 AM' },
+            { name: 'Dr. Lisa Brown', specialization: 'ENT Specialist', experience: '15 years', rating: 4.7, available: 'Tomorrow, 9:00 AM' }
+        ]
+    };
 
     const handleSymptomsSubmit = () => {
         const symptomsList = symptoms.toLowerCase().split(',').map(s => s.trim());
         const recommendations = [];
+        const doctors = [];
 
         // First check for combination symptoms
         const combinedSymptoms = symptomsList.join(' and ');
         if (medicineDatabase[combinedSymptoms]) {
             recommendations.push(...medicineDatabase[combinedSymptoms]);
-        } else {
-            // If no combination found, check individual symptoms
-            symptomsList.forEach(symptom => {
-                if (medicineDatabase[symptom]) {
-                    recommendations.push(...medicineDatabase[symptom]);
-                }
-            });
+        }
+        if (doctorDatabase[combinedSymptoms]) {
+            doctors.push(...doctorDatabase[combinedSymptoms]);
         }
 
+        // If no combination found, check individual symptoms
+        symptomsList.forEach(symptom => {
+            if (medicineDatabase[symptom]) {
+                recommendations.push(...medicineDatabase[symptom]);
+            }
+            if (doctorDatabase[symptom]) {
+                doctors.push(...doctorDatabase[symptom]);
+            }
+        });
+
         setMedicineRecommendations(recommendations);
+        setDoctorRecommendations(doctors);
         setShowMedicineRecommendations(true);
+        setShowDoctorRecommendations(true);
         setShowRecommendationButton(false);
+    };
+
+    const handleSymptomsChange = (e) => {
+        setSymptoms(e.target.value);
+        // If symptoms are cleared or changed, show the recommendation button again
+        if (!e.target.value.trim()) {
+            setShowRecommendationButton(true);
+            setShowMedicineRecommendations(false);
+            setShowDoctorRecommendations(false);
+            setMedicineRecommendations([]);
+            setDoctorRecommendations([]);
+        }
     };
 
     const handleAddToPrescription = (medicine) => {
@@ -221,196 +331,497 @@ const ViewPrescriptions = () => {
         setAddedMedicines([...addedMedicines, medicine.name]);
     };
 
+    const emitPrescriptionsChange = () => {
+        const event = new CustomEvent('prescriptionsChanged', {
+            detail: { prescriptions }
+        });
+        window.dispatchEvent(event);
+    };
+
     const handleDeletePrescription = (index) => {
         const updatedPrescriptions = prescriptions.filter((_, i) => i !== index);
         setPrescriptions(updatedPrescriptions);
+        localStorage.setItem('prescriptions', JSON.stringify(updatedPrescriptions));
+        emitPrescriptionsChange();
     };
 
-    const handleAddToStreak = (medicine) => {
-        // Get existing streak medicines from localStorage
-        const existingStreakMedicines = JSON.parse(localStorage.getItem('streakMedicines') || '[]');
-        
-        // Check if medicine is already in streak
-        if (!existingStreakMedicines.some(m => m.medicine === medicine.medicine)) {
-            const medicineToAdd = {
-                id: Date.now().toString(),
-                name: medicine.medicine,
-                dosage: medicine.dosage,
-                frequency: medicine.timing,
-                startDate: new Date().toISOString().split('T')[0],
-                endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-            };
-            
-            // Add to streak medicines
-            const updatedStreakMedicines = [...existingStreakMedicines, medicineToAdd];
-            localStorage.setItem('streakMedicines', JSON.stringify(updatedStreakMedicines));
-            setAddedToStreak([...addedToStreak, medicine.medicine]);
-        }
+    const handlePrescriptionRequest = (doctor) => {
+        setSelectedDoctor(doctor);
+        setPrescriptionRequest({
+            symptoms: symptoms,
+            additionalNotes: '',
+            preferredMedicines: ''
+        });
+        setShowPrescriptionForm(true);
+    };
+
+    const handleSubmitPrescriptionRequest = (e) => {
+        e.preventDefault();
+        // Here you would typically send this to your backend
+        alert('Prescription request sent successfully! The doctor will review your request and provide a prescription.');
+        setShowPrescriptionForm(false);
+    };
+
+    const handleAddManualMedicine = (e) => {
+        e.preventDefault();
+        const newPrescription = {
+            medicine: newMedicine.medicine,
+            dosage: newMedicine.dosage,
+            timing: newMedicine.timing,
+            duration: newMedicine.duration
+        };
+        const updatedPrescriptions = [...prescriptions, newPrescription];
+        setPrescriptions(updatedPrescriptions);
+        localStorage.setItem('prescriptions', JSON.stringify(updatedPrescriptions));
+        setNewMedicine({
+            medicine: '',
+            dosage: '',
+            timing: '',
+            duration: ''
+        });
+        setShowManualForm(false);
+        emitPrescriptionsChange();
+    };
+
+    const handleAddToPrescriptions = (medicine) => {
+        const newPrescription = {
+            medicine: medicine.name,
+            dosage: medicine.dosage,
+            timing: medicine.frequency,
+            duration: medicine.duration
+        };
+        const updatedPrescriptions = [...prescriptions, newPrescription];
+        setPrescriptions(updatedPrescriptions);
+        localStorage.setItem('prescriptions', JSON.stringify(updatedPrescriptions));
+        setAddedMedicinesFromResponses([...addedMedicinesFromResponses, medicine.name]);
+        emitPrescriptionsChange();
     };
 
     return (
-        <div>
-            <div class="bg-gray-50 min-h-screen font-sans">
-                <nav class="bg-green-900 text-white p-5 flex justify-between items-center">
-                    <h1 class="text-2xl font-bold">💊 View Prescriptions</h1>
-                    <a href="/" class="text-sm hover:underline">Logout</a>
-                </nav>
+        <div className="max-w-7xl mx-auto py-10 px-5">
+            <div className="grid grid-cols-1 gap-8">
+                {/* Existing Prescriptions Table */}
+                <div>
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-3xl font-bold text-green-800">Your Prescriptions</h2>
+                        <button
+                            onClick={() => setShowManualForm(true)}
+                            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2"
+                        >
+                            <FaPlus className="text-sm" />
+                            Add Medicine Manually
+                        </button>
+                    </div>
+                    <div className="shadow-xl rounded-2xl overflow-x-auto">
+                        <table className="w-full bg-white border-collapse">
+                            <thead className="bg-green-900 text-white">
+                                <tr>
+                                    <th className="py-3 px-8 text-left w-1/4">Medicine</th>
+                                    <th className="py-3 px-8 text-left w-1/4">Dosage</th>
+                                    <th className="py-3 px-8 text-left w-1/4">Meal Timing</th>
+                                    <th className="py-3 px-8 text-left w-1/4">Duration</th>
+                                    <th className="py-3 px-8 text-left w-1/6">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {prescriptions.map((prescription, index) => (
+                                    <tr key={index} className="border-t">
+                                        <td className="py-3 px-8">{prescription.medicine}</td>
+                                        <td className="py-3 px-8">{prescription.dosage}</td>
+                                        <td className="py-3 px-8">{prescription.timing}</td>
+                                        <td className="py-3 px-8">{prescription.duration}</td>
+                                        <td className="py-3 px-8">
+                                            <button
+                                                onClick={() => handleDeletePrescription(index)}
+                                                className="text-red-600 hover:text-red-800 transition-colors"
+                                                title="Delete prescription"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                                </svg>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                                {prescriptions.length === 0 && (
+                                    <tr>
+                                        <td colSpan="5" className="py-4 text-center text-gray-500">
+                                            No prescriptions added yet
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
 
-                <div class="max-w-7xl mx-auto py-10 px-5">
-                    <div class="grid grid-cols-1 gap-8">
-                        {/* Existing Prescriptions Table */}
-                        <div>
-                            <h2 class="text-3xl font-bold text-green-800 mb-6">Your Prescriptions</h2>
-                            <div class="shadow-xl rounded-2xl overflow-x-auto">
-                                <table class="w-full bg-white border-collapse">
-                                    <thead class="bg-green-900 text-white">
-                                        <tr>
-                                            <th class="py-3 px-8 text-left w-1/4">Medicine</th>
-                                            <th class="py-3 px-8 text-left w-1/4">Dosage</th>
-                                            <th class="py-3 px-8 text-left w-1/4">Meal Timing</th>
-                                            <th class="py-3 px-8 text-left w-1/4">Duration</th>
-                                            <th class="py-3 px-8 text-left w-1/6">Actions</th>
-                                            <th class="py-3 px-8 text-left w-1/6">Add to Streak</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {prescriptions.map((prescription, index) => (
-                                            <tr key={index} class="border-t">
-                                                <td class="py-3 px-8">{prescription.medicine}</td>
-                                                <td class="py-3 px-8">{prescription.dosage}</td>
-                                                <td class="py-3 px-8">{prescription.timing}</td>
-                                                <td class="py-3 px-8">{prescription.duration}</td>
-                                                <td class="py-3 px-8">
-                                                    <button
-                                                        onClick={() => handleDeletePrescription(index)}
-                                                        class="text-red-600 hover:text-red-800 transition-colors"
-                                                        title="Delete prescription"
-                                                    >
-                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                                            <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
-                                                        </svg>
-                                                    </button>
-                                                </td>
-                                                <td class="py-3 px-8">
-                                                    {addedToStreak.includes(prescription.medicine) ? (
-                                                        <div class="bg-green-100 text-green-800 px-3 py-1 rounded-lg text-center text-sm">
-                                                            Added
-                                                        </div>
-                                                    ) : (
-                                                        <button
-                                                            onClick={() => handleAddToStreak(prescription)}
-                                                            class="bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-1"
-                                                        >
-                                                            <FaPlus class="text-sm" />
-                                                            Add
-                                                        </button>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                        {prescriptions.length === 0 && (
-                                            <tr>
-                                                <td colSpan="6" class="py-4 text-center text-gray-500">
-                                                    No prescriptions added yet
-                                                </td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </table>
+                {/* Manual Medicine Form */}
+                {showManualForm && (
+                    <div className="fixed inset-0 bg-white flex items-center justify-center p-4">
+                        <div className="bg-white rounded-2xl shadow-xl p-6 max-w-lg w-full border border-gray-200">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-xl font-bold text-green-800">Add New Medicine</h3>
+                                <button 
+                                    onClick={() => setShowManualForm(false)}
+                                    className="text-gray-500 hover:text-gray-700"
+                                >
+                                    ✕
+                                </button>
                             </div>
-                        </div>
-
-                        {/* Symptoms and Medicine Recommendations */}
-                        <div>
-                            <h2 class="text-3xl font-bold text-green-800 mb-6">Medicine Recommendations</h2>
                             
-                            <div class="space-y-4">
-                                <div class="bg-white p-6 rounded-2xl shadow-xl">
-                                    <label class="block font-semibold mb-2">Enter Your Symptoms</label>
-                                    <textarea
-                                        value={symptoms}
-                                        onChange={(e) => setSymptoms(e.target.value)}
-                                        placeholder="Enter your symptoms (comma separated). Example: fever, headache, cough"
-                                        class="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-600 h-32"
+                            <form onSubmit={handleAddManualMedicine} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Medicine Name</label>
+                                    <input
+                                        type="text"
+                                        value={newMedicine.medicine}
+                                        onChange={(e) => setNewMedicine({...newMedicine, medicine: e.target.value})}
+                                        className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-600"
+                                        placeholder="Enter medicine name"
+                                        required
                                     />
-                                    <div class="text-sm text-gray-600 mt-2">
-                                        Please describe your symptoms in detail. Separate multiple symptoms with commas.
-                                    </div>
-                                    {showRecommendationButton && (
-                                        <button
-                                            onClick={handleSymptomsSubmit}
-                                            class="w-full mt-4 bg-green-800 text-white py-3 rounded-xl text-lg hover:bg-green-900 transition"
-                                        >
-                                            Get Medicine Recommendations
-                                        </button>
-                                    )}
+                                </div>
+                                
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Dosage</label>
+                                    <input
+                                        type="text"
+                                        value={newMedicine.dosage}
+                                        onChange={(e) => setNewMedicine({...newMedicine, dosage: e.target.value})}
+                                        className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-600"
+                                        placeholder="e.g. 2 Times a Day"
+                                        required
+                                    />
+                                </div>
+                                
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Timing</label>
+                                    <select
+                                        value={newMedicine.timing}
+                                        onChange={(e) => setNewMedicine({...newMedicine, timing: e.target.value})}
+                                        className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-600"
+                                        required
+                                    >
+                                        <option value="">Select timing</option>
+                                        <option value="Before Meal">Before Meal</option>
+                                        <option value="After Meal">After Meal</option>
+                                        <option value="With Meal">With Meal</option>
+                                        <option value="Anytime">Anytime</option>
+                                    </select>
                                 </div>
 
-                                {showMedicineRecommendations && (
-                                    <div class="space-y-4">
-                                        {medicineRecommendations.length > 0 ? (
-                                            <div class="space-y-4">
-                                                {medicineRecommendations.map((medicine, index) => (
-                                                    <div key={index} class="bg-white p-6 rounded-2xl shadow-xl">
-                                                        <div class="flex items-center justify-between mb-2">
-                                                            <h4 class="font-semibold text-lg">{medicine.name}</h4>
-                                                            <span class="text-sm bg-green-100 text-green-800 px-2 py-1 rounded">
-                                                                {medicine.dosage}
-                                                            </span>
-                                                        </div>
-                                                        
-                                                        <div class="grid grid-cols-2 gap-4 text-sm">
-                                                            <div>
-                                                                <p class="text-gray-600">Timing:</p>
-                                                                <p class="font-medium">{medicine.timing}</p>
-                                                            </div>
-                                                            <div>
-                                                                <p class="text-gray-600">Duration:</p>
-                                                                <p class="font-medium">{medicine.duration}</p>
-                                                            </div>
-                                                        </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Duration</label>
+                                    <input
+                                        type="text"
+                                        value={newMedicine.duration}
+                                        onChange={(e) => setNewMedicine({...newMedicine, duration: e.target.value})}
+                                        className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-600"
+                                        placeholder="e.g. 5 Days"
+                                        required
+                                    />
+                                </div>
 
-                                                        <div class="mt-3">
-                                                            <p class="text-sm text-gray-600">Side Effects:</p>
-                                                            <p class="text-sm">{medicine.sideEffects}</p>
-                                                        </div>
+                                <div className="flex justify-end gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowManualForm(false)}
+                                        className="px-4 py-2 border rounded-lg hover:bg-gray-100"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                                    >
+                                        Add Medicine
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
 
-                                                        <div class="mt-3">
-                                                            <p class="text-sm text-gray-600">Precautions:</p>
-                                                            <p class="text-sm">{medicine.precautions}</p>
-                                                        </div>
+                {/* Symptoms and Recommendations */}
+                <div>
+                    <h2 className="text-3xl font-bold text-green-800 mb-6">Get Medical Help</h2>
+                    
+                    <div className="space-y-4">
+                        <div className="bg-white p-6 rounded-2xl shadow-xl">
+                            <label className="block font-semibold mb-2">Enter Your Symptoms</label>
+                            <textarea
+                                value={symptoms}
+                                onChange={handleSymptomsChange}
+                                placeholder="Enter your symptoms (comma separated). Example: fever, headache, cough"
+                                className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-600 h-32"
+                            />
+                            <div className="text-sm text-gray-600 mt-2">
+                                Please describe your symptoms in detail. Separate multiple symptoms with commas.
+                            </div>
+                            {showRecommendationButton && (
+                                <button
+                                    onClick={handleSymptomsSubmit}
+                                    className="w-full mt-4 bg-green-800 text-white py-3 rounded-xl text-lg hover:bg-green-900 transition"
+                                >
+                                    Get Recommendations
+                                </button>
+                            )}
+                        </div>
 
-                                                        <div class="mt-4 text-sm text-gray-500">
-                                                            Note: This is a general recommendation. Please consult your doctor before taking any medication.
-                                                        </div>
+                        {showPrescriptionForm && selectedDoctor && (
+                            <div className="fixed inset-0 bg-white flex items-center justify-center p-4">
+                                <div className="bg-white rounded-2xl shadow-xl p-6 max-w-lg w-full border border-gray-200">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h3 className="text-xl font-bold text-green-800">Request Prescription from {selectedDoctor.name}</h3>
+                                        <button 
+                                            onClick={() => setShowPrescriptionForm(false)}
+                                            className="text-gray-500 hover:text-gray-700"
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                    
+                                    <form onSubmit={handleSubmitPrescriptionRequest} className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Symptoms</label>
+                                            <textarea
+                                                value={prescriptionRequest.symptoms}
+                                                onChange={(e) => setPrescriptionRequest({...prescriptionRequest, symptoms: e.target.value})}
+                                                className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-600"
+                                                rows="3"
+                                                required
+                                            />
+                                        </div>
+                                        
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Additional Notes</label>
+                                            <textarea
+                                                value={prescriptionRequest.additionalNotes}
+                                                onChange={(e) => setPrescriptionRequest({...prescriptionRequest, additionalNotes: e.target.value})}
+                                                className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-600"
+                                                rows="3"
+                                                placeholder="Any additional information about your condition..."
+                                            />
+                                        </div>
+                                        
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Preferred Medicines (if any)</label>
+                                            <input
+                                                type="text"
+                                                value={prescriptionRequest.preferredMedicines}
+                                                onChange={(e) => setPrescriptionRequest({...prescriptionRequest, preferredMedicines: e.target.value})}
+                                                className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-600"
+                                                placeholder="Enter any medicines you prefer or have used before..."
+                                            />
+                                        </div>
 
-                                                        {addedMedicines.includes(medicine.name) ? (
-                                                            <div class="mt-4 bg-green-100 text-green-800 py-2 px-4 rounded-lg text-center">
-                                                                Added to Prescription
-                                                            </div>
-                                                        ) : (
-                                                            <button
-                                                                onClick={() => handleAddToPrescription(medicine)}
-                                                                class="w-full mt-4 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition"
-                                                            >
-                                                                Add to Prescription
-                                                            </button>
-                                                        )}
+                                        <div className="flex justify-end gap-3">
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowPrescriptionForm(false)}
+                                                className="px-4 py-2 border rounded-lg hover:bg-gray-100"
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button
+                                                type="submit"
+                                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                                            >
+                                                Send Request
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        )}
+
+                        {showDoctorRecommendations && (
+                            <div className="space-y-4">
+                                <h3 className="text-2xl font-bold text-green-800">Recommended Doctors</h3>
+                                {doctorRecommendations.length > 0 ? (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {doctorRecommendations.map((doctor, index) => (
+                                            <div key={index} className="bg-white p-6 rounded-2xl shadow-xl">
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <div>
+                                                        <h4 className="font-semibold text-lg">{doctor.name}</h4>
+                                                        <p className="text-gray-600">{doctor.specialization}</p>
+                                                    </div>
+                                                    <div className="bg-green-100 text-green-800 px-3 py-1 rounded-lg">
+                                                        {doctor.rating} ⭐
+                                                    </div>
+                                                </div>
+                                                
+                                                <div className="space-y-2 text-sm">
+                                                    <p><span className="font-medium">Experience:</span> {doctor.experience}</p>
+                                                    <p><span className="font-medium">Response Time:</span> Within 24 hours</p>
+                                                </div>
+
+                                                <button 
+                                                    onClick={() => handlePrescriptionRequest(doctor)}
+                                                    className="w-full mt-4 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition"
+                                                >
+                                                    Ask for Prescription
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-4 bg-white rounded-2xl shadow-xl">
+                                        <p className="text-gray-600">No specific doctor recommendations found for these symptoms.</p>
+                                        <p className="text-sm text-gray-500 mt-2">
+                                            Please consult with a general physician for proper diagnosis.
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {showMedicineRecommendations && (
+                            <div className="space-y-4">
+                                <h3 className="text-2xl font-bold text-green-800">Medicine Recommendations</h3>
+                                {medicineRecommendations.length > 0 ? (
+                                    <div className="space-y-4">
+                                        {medicineRecommendations.map((medicine, index) => (
+                                            <div key={index} className="bg-white p-6 rounded-2xl shadow-xl">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <h4 className="font-semibold text-lg">{medicine.name}</h4>
+                                                    <span className="text-sm bg-green-100 text-green-800 px-2 py-1 rounded">
+                                                        {medicine.dosage}
+                                                    </span>
+                                                </div>
+                                                
+                                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                                    <div>
+                                                        <p className="text-gray-600">Timing:</p>
+                                                        <p className="font-medium">{medicine.timing}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-gray-600">Duration:</p>
+                                                        <p className="font-medium">{medicine.duration}</p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="mt-3">
+                                                    <p className="text-sm text-gray-600">Side Effects:</p>
+                                                    <p className="text-sm">{medicine.sideEffects}</p>
+                                                </div>
+
+                                                <div className="mt-3">
+                                                    <p className="text-sm text-gray-600">Precautions:</p>
+                                                    <p className="text-sm">{medicine.precautions}</p>
+                                                </div>
+
+                                                <div className="mt-4 text-sm text-gray-500">
+                                                    Note: This is a general recommendation. Please consult your doctor before taking any medication.
+                                                </div>
+
+                                                {addedMedicines.includes(medicine.name) ? (
+                                                    <div className="mt-4 bg-green-100 text-green-800 py-2 px-4 rounded-lg text-center">
+                                                        Added to Prescription
+                                                    </div>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => handleAddToPrescription(medicine)}
+                                                        className="w-full mt-4 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition"
+                                                    >
+                                                        Add to Prescription
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-4 bg-white rounded-2xl shadow-xl">
+                                        <p className="text-gray-600">No specific medicine recommendations found for these symptoms.</p>
+                                        <p className="text-sm text-gray-500 mt-2">
+                                            Please consult with the doctor for proper diagnosis and treatment.
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Prescription Responses */}
+                <div>
+                    <h2 className="text-3xl font-bold text-green-800 mb-6">Prescription Responses</h2>
+                    <div className="space-y-4">
+                        {prescriptionResponses.map(response => (
+                            <div key={response.id} className="bg-white rounded-2xl shadow-xl p-6">
+                                <div className="flex justify-between items-start mb-4">
+                                    <div>
+                                        <h3 className="text-xl font-semibold">{response.doctor}</h3>
+                                        <p className="text-gray-600">Date: {response.date}</p>
+                                    </div>
+                                    <div className={`px-3 py-1 rounded-lg ${
+                                        response.status === 'approved' ? 'bg-green-100 text-green-800' : 
+                                        response.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
+                                        'bg-red-100 text-red-800'
+                                    }`}>
+                                        {response.status.charAt(0).toUpperCase() + response.status.slice(1)}
+                                    </div>
+                                </div>
+
+                                {response.status === 'approved' && (
+                                    <div className="space-y-4">
+                                        <div className="border-t pt-4">
+                                            <h4 className="font-medium mb-2">Prescribed Medicines:</h4>
+                                            <div className="space-y-2">
+                                                {response.medicines.map((medicine, index) => (
+                                                    <div key={index} className="bg-gray-50 p-3 rounded-lg">
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="font-medium">{medicine.name}</span>
+                                                            {addedMedicinesFromResponses.includes(medicine.name) ? (
+                                                                <div className="bg-green-100 text-green-800 px-3 py-1 rounded-lg text-sm">
+                                                                    Added
+                                                                </div>
+                                                            ) : (
+                                                                <button
+                                                                    onClick={() => handleAddToPrescriptions(medicine)}
+                                                                    className="text-green-600 hover:text-green-800"
+                                                                >
+                                                                    Add to Prescriptions
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                        <div className="text-sm text-gray-600 mt-1">
+                                                            <p>Dosage: {medicine.dosage}</p>
+                                                            <p>Frequency: {medicine.frequency}</p>
+                                                            <p>Duration: {medicine.duration}</p>
+                                                        </div>
                                                     </div>
                                                 ))}
                                             </div>
-                                        ) : (
-                                            <div class="text-center py-4 bg-white rounded-2xl shadow-xl">
-                                                <p class="text-gray-600">No specific medicine recommendations found for these symptoms.</p>
-                                                <p class="text-sm text-gray-500 mt-2">
-                                                    Please consult with the doctor for proper diagnosis and treatment.
-                                                </p>
+                                        </div>
+
+                                        {response.notes && (
+                                            <div className="border-t pt-4">
+                                                <h4 className="font-medium mb-2">Doctor's Notes:</h4>
+                                                <p className="text-gray-600">{response.notes}</p>
                                             </div>
                                         )}
                                     </div>
                                 )}
+
+                                {response.status === 'pending' && (
+                                    <div className="text-center py-4">
+                                        <p className="text-gray-600">Your prescription request is being reviewed by the doctor.</p>
+                                        <p className="text-sm text-gray-500 mt-2">You will be notified once the prescription is ready.</p>
+                                    </div>
+                                )}
                             </div>
-                        </div>
+                        ))}
+
+                        {prescriptionResponses.length === 0 && (
+                            <div className="text-center py-8 bg-white rounded-2xl shadow-xl">
+                                <p className="text-gray-600">No prescription responses yet.</p>
+                                <p className="text-sm text-gray-500 mt-2">
+                                    Request a prescription from a doctor to see responses here.
+                                </p>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

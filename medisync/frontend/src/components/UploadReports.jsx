@@ -140,7 +140,9 @@ const UploadReports = () => {
             <div class="bg-gray-50 min-h-screen font-sans">
                 <nav class="bg-green-900 text-white p-5 flex justify-between items-center">
                     <h1 class="text-2xl font-bold">📄 Upload Reports</h1>
-                    <a href="/" class="text-sm hover:underline">Logout</a>
+                    <div className="flex items-center space-x-4">
+                        <span className="text-gray-600">Welcome, {userName}</span>
+                    </div>
                 </nav>
 
                 <div class="max-w-4xl mx-auto py-12 px-6">

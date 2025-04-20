@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { 
     FiCalendar, FiClock, FiFileText, FiUpload, FiBell, 
@@ -283,7 +283,7 @@ const Patient = () => {
                                     </div>
                                 </div>
                                 <div className="mt-4">
-                                    <a href="/view-prescriptions" className="text-sm text-purple-600 hover:text-purple-800 font-medium">View prescriptions →</a>
+                                    <Link to="/view-prescriptions" className="text-sm text-purple-600 hover:text-purple-800 font-medium">View prescriptions →</Link>
                                 </div>
                             </div>
 
@@ -498,7 +498,7 @@ const Patient = () => {
                                             </svg>
                                         </button>
                                     </a>
-                                    <a href="/view-prescriptions" className="block">
+                                    <Link to="/view-prescriptions" className="block">
                                         <button className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-pink-50 to-pink-100 text-pink-700 rounded-lg hover:shadow-md transition-all duration-300 group-hover:from-pink-100 hover:to-pink-200 transition-all duration-200">
                                             <div className="flex items-center">
                                                 <FiFileText className="mr-3 h-5 w-5" />
@@ -508,7 +508,7 @@ const Patient = () => {
                                                 <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
                                             </svg>
                                         </button>
-                                    </a>
+                                    </Link>
                                     <a href="/book-appointment" className="block">
                                         <button className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 rounded-lg hover:shadow-md transition-all duration-300 group-hover:from-blue-100 hover:to-blue-200 transition-all duration-200">
                                             <div className="flex items-center">
