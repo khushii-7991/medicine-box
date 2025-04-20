@@ -75,6 +75,7 @@ const MedicationSchedule = () => {
                     return;
                 }
 
+                console.log('Fetching today\'s schedule...');
                 const response = await fetch('http://localhost:3000/schedule/today', {
                     headers: {
                         'Authorization': `Bearer ${token}`
@@ -86,7 +87,15 @@ const MedicationSchedule = () => {
                 }
 
                 const data = await response.json();
-                setTodaySchedule(data);
+                console.log('Today\'s schedule data:', data);
+                
+                // Filter out any schedules with empty medicines arrays
+                const validSchedules = data.filter(schedule => 
+                    schedule.medicines && schedule.medicines.length > 0
+                );
+                
+                console.log('Valid schedules with medicines:', validSchedules);
+                setTodaySchedule(validSchedules);
                 setLoading(false);
             } catch (err) {
                 console.error('Error fetching schedule:', err);

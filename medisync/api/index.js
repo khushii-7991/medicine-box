@@ -14,7 +14,7 @@ app.use(express.json());
 app.use('/doctor', doctorRoutes);
 app.use('/patient', patientRouter);
 app.use('/prescription', prescriptionRouter);
-app.use('/api/schedule', scheduleRoutes);
+app.use('/schedule', scheduleRoutes);
 
 mongoose.connect('mongodb://localhost:27017/medwise')
   .then(() => console.log('MongoDB Connected'))
