@@ -5,12 +5,9 @@ const doctorRoutes = require('./routes/doctorRoute');
 const patientRouter = require('./routes/patientRoute');
 const prescriptionRouter = require('./routes/prescriptionRoute');
 const scheduleRoutes = require('./routes/scheduleRoute');
-<<<<<<< HEAD
 const hospitalRoutes = require('./routes/hospitalRoute');
 const hospitalSearchRoutes = require('./routes/hospitalSearchRoute');
-=======
 const path = require('path');
->>>>>>> 8baca21be8bce5f4364d5139801464690d9ffeb2
 
 const app = express();
 

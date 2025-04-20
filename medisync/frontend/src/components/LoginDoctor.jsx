@@ -12,10 +12,10 @@ const LoginDoctor = () => {
   const [error, setError] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   // Check if there's a redirect path from a protected route
   const from = location.state?.from || '/doctor-profile';
-  
+
   useEffect(() => {
     // Check if already logged in
     const token = localStorage.getItem('doctorToken');
@@ -35,36 +35,34 @@ const LoginDoctor = () => {
     try {
       const endpoint = isSignup ? '/doctor/signup' : '/doctor/login';
       const loadingToast = toast.loading(isSignup ? 'Creating account...' : 'Logging in...');
-      
+
       const response = await fetch(`http://localhost:3000${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
-      
+
       const data = await response.json();
-      console.log(data);
-      
+      console.log("data", data);
+      console.log("response", response);
+
       toast.dismiss(loadingToast);
-      
+
       if (!response.ok) {
         toast.error(data.message || 'Something went wrong');
         throw new Error(data.message || 'Something went wrong');
       }
 
       if (response.ok) {
-        if (data.success) {
+        if (!isSignup) {
           localStorage.setItem('doctorToken', data.token);
-          localStorage.setItem('doctorData', JSON.stringify(data.doctor));
+          localStorage.setItem('doctorData', JSON.stringify(data.user));
           toast.success('Login successful!');
-          navigate('/doctor-profile');
-        } else if (isSignup) {
+        }
+        if (isSignup) {
           setIsSignup(false);
           toast.success('Registration successful! Please login.');
           setFormData({ name: '', email: '', password: '' });
-          return;
-        } else {
-          toast.error(data.message || 'Login failed');
           return;
         }
         navigate(from);
@@ -79,7 +77,7 @@ const LoginDoctor = () => {
       {/* Decorative elements */}
       <div className="absolute top-0 left-0 w-full h-40 bg-gradient-to-r from-blue-500 to-indigo-600 transform -skew-y-6 -translate-y-20 z-0"></div>
       <div className="absolute bottom-0 right-0 w-full h-40 bg-gradient-to-r from-cyan-500 to-blue-500 transform skew-y-6 translate-y-20 z-0"></div>
-      
+
       {/* Floating particles */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/5 w-4 h-4 bg-blue-400 rounded-full animate-float opacity-60"></div>
@@ -87,17 +85,17 @@ const LoginDoctor = () => {
         <div className="absolute bottom-1/4 left-1/3 w-5 h-5 bg-cyan-400 rounded-full animate-float-medium opacity-60"></div>
         <div className="absolute top-2/3 right-1/5 w-3 h-3 bg-blue-400 rounded-full animate-float opacity-60"></div>
       </div>
-      
+
       {/* Medical icon */}
       <div className="absolute top-20 right-20 animate-float-slow hidden lg:block">
         <div className="text-6xl text-blue-300 opacity-40">👨‍⚕️</div>
       </div>
-      
+
       <div className="relative z-10 flex items-center justify-center min-h-screen p-6">
         <div className="w-full max-w-md relative">
           {/* Glow effect */}
           <div className="absolute -inset-1 bg-gradient-to-r from-blue-400 to-indigo-500 rounded-2xl blur-xl opacity-30 animate-pulse-slow"></div>
-          
+
           <div className="relative bg-white rounded-2xl shadow-xl overflow-hidden">
             {/* Header with gradient */}
             <div className="bg-gradient-to-r from-blue-500 to-indigo-600 p-6 text-white">
@@ -112,22 +110,21 @@ const LoginDoctor = () => {
                 </h2>
               </div>
               <p className="text-center text-blue-100">
-                {isSignup 
-                  ? 'Create your account to join our medical platform' 
+                {isSignup
+                  ? 'Create your account to join our medical platform'
                   : 'Welcome back! Please login to your account'}
               </p>
             </div>
-            
+
             {/* Form content */}
             <div className="p-8">
               {error && (
-                <div className={`p-4 rounded-lg mb-6 text-center ${
-                  error.includes('successful') ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-100 text-red-700 border border-red-200'
-                }`}>
+                <div className={`p-4 rounded-lg mb-6 text-center ${error.includes('successful') ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-100 text-red-700 border border-red-200'
+                  }`}>
                   {error}
                 </div>
               )}
-              
+
               <form onSubmit={handleSubmit} className="space-y-6">
                 {isSignup && (
                   <div className="space-y-2">
@@ -152,7 +149,7 @@ const LoginDoctor = () => {
                     </div>
                   </div>
                 )}
-                
+
                 <div className="space-y-2">
                   <label className="block text-gray-700 text-sm font-semibold">
                     Email Address
@@ -174,7 +171,7 @@ const LoginDoctor = () => {
                     />
                   </div>
                 </div>
-                
+
                 <div className="space-y-2">
                   <label className="block text-gray-700 text-sm font-semibold">
                     Password
@@ -196,7 +193,7 @@ const LoginDoctor = () => {
                     />
                   </div>
                 </div>
-                
+
                 <button
                   type="submit"
                   className="w-full py-3 px-4 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
@@ -204,7 +201,7 @@ const LoginDoctor = () => {
                   {isSignup ? 'Create Account' : 'Login'}
                 </button>
               </form>
-              
+
               <div className="mt-8 text-center">
                 <div className="relative">
                   <div className="absolute inset-0 flex items-center">
@@ -214,7 +211,7 @@ const LoginDoctor = () => {
                     <span className="px-4 bg-white text-sm text-gray-500">Or</span>
                   </div>
                 </div>
-                
+
                 <div className="mt-6">
                   <button
                     onClick={() => {
@@ -235,7 +232,7 @@ const LoginDoctor = () => {
               </div>
             </div>
           </div>
-          
+
           {/* Floating card */}
           <div className="absolute -bottom-6 -right-6 bg-white rounded-xl shadow-lg p-4 border border-gray-100 animate-float-medium hidden md:block">
             <div className="flex items-center gap-3">
@@ -252,7 +249,7 @@ const LoginDoctor = () => {
           </div>
         </div>
       </div>
-      
+
       <style jsx>{`
         @keyframes float {
           0% { transform: translateY(0px); }
