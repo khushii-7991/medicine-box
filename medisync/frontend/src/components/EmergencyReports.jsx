@@ -5,7 +5,7 @@ const EmergencyReports = () => {
         <div>
             <div class="bg-gray-50 min-h-screen font-sans">
 
-                <nav class="bg-cyan-900 text-white p-5 flex justify-between items-center">
+                <nav class="bg-green-900 text-white p-5 flex justify-between items-center">
                     <h1 class="text-2xl font-bold">🩺 Doctor Dashboard</h1>
                     <a href="/" class="text-sm hover:underline">Logout</a>
                 </nav>
@@ -13,7 +13,7 @@ const EmergencyReports = () => {
                 <div class="max-w-6xl mx-auto py-12 px-6">
 
                     <div class="text-center mb-10">
-                        <h2 class="text-4xl font-bold text-cyan-800 mb-2">Emergency Requests</h2>
+                        <h2 class="text-4xl font-bold text-green-800 mb-2">Emergency Requests</h2>
                         <p class="text-gray-600">Review and respond to patient emergencies instantly.</p>
                     </div>
 

@@ -2,14 +2,14 @@ import React from 'react';
 
 const Home = () => {
     return (
-        <div className="min-h-screen bg-gradient-to-b from-indigo-50 via-white to-cyan-50 relative overflow-hidden">
+        <div className="min-h-screen bg-gradient-to-b from-indigo-50 via-white to-green-50 relative overflow-hidden">
             {/* Decorative elements */}
-            <div className="absolute top-0 left-0 w-full h-40 bg-gradient-to-r from-cyan-500 to-blue-500 transform -skew-y-6 -translate-y-20 z-0"></div>
+            <div className="absolute top-0 left-0 w-full h-40 bg-gradient-to-r from-green-500 to-teal-500 transform -skew-y-6 -translate-y-20 z-0"></div>
             <div className="absolute bottom-0 right-0 w-full h-36 bg-gradient-to-r from-indigo-500 to-purple-500 transform skew-y-6 translate-y-16 z-0"></div>
             
             {/* Floating particles */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute top-1/4 left-1/5 w-4 h-4 bg-cyan-400 rounded-full animate-float opacity-60"></div>
+                <div className="absolute top-1/4 left-1/5 w-4 h-4 bg-green-400 rounded-full animate-float opacity-60"></div>
                 <div className="absolute top-1/3 right-1/4 w-6 h-6 bg-indigo-400 rounded-full animate-float-slow opacity-60"></div>
                 <div className="absolute bottom-1/4 left-1/3 w-5 h-5 bg-purple-400 rounded-full animate-float-medium opacity-60"></div>
                 <div className="absolute top-2/3 right-1/5 w-3 h-3 bg-blue-400 rounded-full animate-float opacity-60"></div>
@@ -18,10 +18,10 @@ const Home = () => {
             
             {/* Medical icons */}
             <div className="absolute top-20 right-20 animate-float-slow hidden lg:block">
-                <div className="text-6xl text-indigo-300 opacity-40">💊</div>
+                <div className="text-6xl text-green-300 opacity-40">💊</div>
             </div>
             <div className="absolute bottom-20 left-20 animate-float-medium hidden lg:block">
-                <div className="text-6xl text-cyan-300 opacity-40">💉</div>
+                <div className="text-6xl text-green-300 opacity-40">💉</div>
             </div>
             
             {/* Main content */}
@@ -29,12 +29,12 @@ const Home = () => {
                 {/* Left side - Hero content */}
                 <div className="w-full lg:w-1/2 flex flex-col items-start space-y-7 mb-8 lg:mb-0">
                     <div className="flex items-center">
-                        <div className="bg-gradient-to-r from-cyan-500 to-blue-500 p-3 rounded-xl shadow-lg mr-4">
+                        <div className="bg-gradient-to-r from-green-500 to-teal-500 p-3 rounded-xl shadow-lg mr-4">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-9 w-9 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
                             </svg>
                         </div>
-                        <h1 className="text-3xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-600 to-blue-700">
+                        <h1 className="text-3xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-green-600 to-teal-700">
                             MediSync
                         </h1>
                     </div>
@@ -49,7 +49,7 @@ const Home = () => {
                     </p>
                     
                     <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-                        <a href="/login/patient" className="px-7 py-4 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-cyan-200/50 transition-all duration-300 hover:-translate-y-1 flex items-center justify-center gap-2 text-center">
+                        <a href="/login/patient" className="px-7 py-4 bg-gradient-to-r from-green-500 to-teal-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-green-200/50 transition-all duration-300 hover:-translate-y-1 flex items-center justify-center gap-2 text-center">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                 <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
                             </svg>
@@ -84,7 +84,7 @@ const Home = () => {
                 {/* Right side - Image */}
                 <div className="w-full lg:w-1/2 flex justify-center lg:justify-end">
                     <div className="relative">
-                        <div className="absolute -inset-1 bg-gradient-to-r from-cyan-400 to-indigo-500 rounded-3xl blur-xl opacity-30 animate-pulse-slow"></div>
+                        <div className="absolute -inset-1 bg-gradient-to-r from-green-400 to-teal-500 rounded-3xl blur-xl opacity-30 animate-pulse-slow"></div>
                         <div className="relative bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100">
                             <img 
                                 src="https://img.freepik.com/free-vector/medical-healthcare-protection-illustration_1302-3613.jpg" 
@@ -96,8 +96,8 @@ const Home = () => {
                         {/* Floating cards */}
                         <div className="absolute -bottom-6 -left-6 bg-white rounded-xl shadow-lg p-4 border border-gray-100 animate-float-slow">
                             <div className="flex items-center gap-3">
-                                <div className="bg-cyan-100 p-2 rounded-lg">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-cyan-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <div className="bg-green-100 p-2 rounded-lg">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
                                 </div>
@@ -133,9 +133,9 @@ const Home = () => {
                             2025 MediSync | Smart Medical System
                         </div>
                         <div className="flex gap-6">
-                            <a href="#" className="text-sm text-gray-600 hover:text-cyan-600 transition-colors">Privacy Policy</a>
-                            <a href="#" className="text-sm text-gray-600 hover:text-cyan-600 transition-colors">Terms of Service</a>
-                            <a href="#" className="text-sm text-gray-600 hover:text-cyan-600 transition-colors">Contact Us</a>
+                            <a href="#" className="text-sm text-gray-600 hover:text-green-600 transition-colors">Privacy Policy</a>
+                            <a href="#" className="text-sm text-gray-600 hover:text-green-600 transition-colors">Terms of Service</a>
+                            <a href="#" className="text-sm text-gray-600 hover:text-green-600 transition-colors">Contact Us</a>
                         </div>
                     </div>
                 </div>

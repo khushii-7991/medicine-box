@@ -4,13 +4,14 @@ import axios from 'axios';
 import { 
     FiCalendar, FiClock, FiFileText, FiUpload, FiBell, 
     FiPhoneCall, FiActivity, FiPieChart, FiTrendingUp, FiUser, FiCheckCircle, FiAlertTriangle,
-    FiPlus, FiCheck, FiX, FiLogOut
+    FiPlus, FiCheck, FiX, FiLogOut, FiAward
 } from 'react-icons/fi';
 import { 
     AreaChart, Area, BarChart, Bar, PieChart, Pie, LineChart, Line, 
     XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, 
     RadialBarChart, RadialBar, Cell
 } from 'recharts';
+import MedicineTracking from './MedicineTracking';
 
 const Patient = () => {
     const navigate = useNavigate();
@@ -190,8 +191,34 @@ const Patient = () => {
         navigate('/');
     };
 
+    const [showTracking, setShowTracking] = useState(true);
+    const [selectedPrescription, setSelectedPrescription] = useState({
+        id: 'default',
+        name: 'Daily Medications',
+        startDate: new Date().toISOString(),
+        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+    });
+
+    const [streakData, setStreakData] = useState({
+        currentStreak: 7,
+        longestStreak: 14,
+        totalCompleted: 42,
+        streakHistory: [
+            { date: '2024-03-01', status: 'completed' },
+            { date: '2024-03-02', status: 'completed' },
+            { date: '2024-03-03', status: 'completed' },
+            { date: '2024-03-04', status: 'completed' },
+            { date: '2024-03-05', status: 'completed' },
+            { date: '2024-03-06', status: 'completed' },
+            { date: '2024-03-07', status: 'completed' },
+            { date: '2024-03-08', status: 'missed' },
+            { date: '2024-03-09', status: 'completed' },
+            { date: '2024-03-10', status: 'completed' },
+        ]
+    });
+
     return (
-        <div className="min-h-screen bg-gradient-to-br from-green-50 to-teal-100">
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
             <div className="max-w-7xl mx-auto py-8 px-6">
                 {/* Header with welcome message and stats */}
                 <div className="flex flex-col md:flex-row justify-between items-center mb-8">
@@ -289,11 +316,34 @@ const Patient = () => {
                                     <a href="/medication-schedule" className="text-sm text-green-600 hover:text-green-800 font-medium">View medication schedule →</a>
                                 </div>
                             </div>
+
+                            {/* Streak Stats Card */}
+                            <div className="bg-white rounded-xl shadow-md p-6 border-t-4 border-amber-500 transform transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <p className="text-sm font-medium text-gray-600">Current Streak</p>
+                                        <p className="text-2xl font-bold text-gray-800 mt-1">{streakData.currentStreak} days</p>
+                                    </div>
+                                    <div className="bg-amber-100 p-3 rounded-full">
+                                        <FiAward className="h-6 w-6 text-amber-600" />
+                                    </div>
+                                </div>
+                                <div className="mt-4">
+                                    <div className="flex items-center justify-between text-sm">
+                                        <span className="text-gray-600">Longest Streak:</span>
+                                        <span className="font-medium">{streakData.longestStreak} days</span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-sm mt-1">
+                                        <span className="text-gray-600">Total Completed:</span>
+                                        <span className="font-medium">{streakData.totalCompleted} doses</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         {/* Main Content Area */}
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-                            {/* Left Column - Recent Activity */}
+                            {/* Left Column - Recent Activity and Medication Adherence */}
                             <div className="lg:col-span-1">
                                 <div className="bg-white rounded-xl shadow-md p-6 mb-8">
                                     <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
@@ -320,6 +370,33 @@ const Patient = () => {
                                                 </div>
                                             </div>
                                         ))}
+                                    </div>
+                                </div>
+
+                                {/* Streak History */}
+                                <div className="bg-white rounded-xl shadow-md p-6 mt-8">
+                                    <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                                        <FiAward className="mr-2 text-amber-600" /> Streak History
+                                    </h2>
+                                    <div className="grid grid-cols-10 gap-2">
+                                        {streakData.streakHistory.map((day, index) => (
+                                            <div
+                                                key={index}
+                                                className={`aspect-square rounded flex items-center justify-center ${
+                                                    day.status === 'completed' ? 'bg-green-500' : 'bg-red-500'
+                                                }`}
+                                                title={`${new Date(day.date).toLocaleDateString()}: ${day.status}`}
+                                            >
+                                                {day.status === 'completed' ? (
+                                                    <FiCheck className="text-white" />
+                                                ) : (
+                                                    <FiX className="text-white" />
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="mt-2 text-xs text-gray-500">
+                                        Last 10 days of medication adherence
                                     </div>
                                 </div>
 
@@ -359,77 +436,46 @@ const Patient = () => {
                                 </div>
                             </div>
 
-                            {/* Middle and Right Columns - Charts */}
-                            <div className="lg:col-span-2">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    {/* Weekly Appointment Trends */}
-                                    <div className="bg-white rounded-xl shadow-md p-6">
-                                        <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                                            <FiCalendar className="mr-2 text-blue-600" /> Weekly Schedule
-                                        </h2>
-                                        <div className="h-64">
-                                            <ResponsiveContainer width="100%" height="100%">
-                                                <BarChart data={appointmentData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                                    <XAxis dataKey="name" />
-                                                    <YAxis allowDecimals={false} />
-                                                    <Tooltip />
-                                                    <Bar dataKey="appointments" fill="#3B82F6" radius={[4, 4, 0, 0]} />
-                                                </BarChart>
-                                            </ResponsiveContainer>
-                                        </div>
+                            {/* Right Column - Health Metrics Trends and Medication Calendar */}
+                            <div className="lg:col-span-2 space-y-8">
+                                {/* Health Metrics Trends - Moved to top */}
+                                <div className="bg-white rounded-xl shadow-md p-6">
+                                    <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                                        <FiTrendingUp className="mr-2 text-teal-600" /> Health Metrics Trends
+                                    </h2>
+                                    <div className="h-72">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <LineChart data={healthMetrics} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                                <XAxis dataKey="name" />
+                                                <YAxis yAxisId="left" orientation="left" stroke="#0EA5E9" />
+                                                <YAxis yAxisId="right" orientation="right" stroke="#10B981" />
+                                                <Tooltip />
+                                                <Legend />
+                                                <Line yAxisId="left" type="monotone" dataKey="bloodPressure" stroke="#0EA5E9" activeDot={{ r: 8 }} name="Blood Pressure" />
+                                                <Line yAxisId="left" type="monotone" dataKey="bloodSugar" stroke="#8B5CF6" name="Blood Sugar" />
+                                                <Line yAxisId="right" type="monotone" dataKey="weight" stroke="#10B981" name="Weight (kg)" />
+                                            </LineChart>
+                                        </ResponsiveContainer>
                                     </div>
+                                </div>
 
-                                    {/* Health Conditions */}
-                                    <div className="bg-white rounded-xl shadow-md p-6">
-                                        <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                                            <FiActivity className="mr-2 text-purple-600" /> Health Conditions
+                                {/* Medicine Tracking Calendar - Made wider */}
+                                <div className="bg-white rounded-xl shadow-md p-6">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h2 className="text-xl font-bold text-gray-800 flex items-center">
+                                            <FiCalendar className="mr-2 text-teal-600" /> Medication Calendar
                                         </h2>
-                                        <div className="h-64">
-                                            <ResponsiveContainer width="100%" height="100%">
-                                                <PieChart>
-                                                    <Pie
-                                                        data={conditionData}
-                                                        cx="50%"
-                                                        cy="50%"
-                                                        innerRadius={60}
-                                                        outerRadius={80}
-                                                        paddingAngle={5}
-                                                        dataKey="value"
-                                                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                                                        labelLine={false}
-                                                    >
-                                                        {conditionData.map((entry, index) => (
-                                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                                        ))}
-                                                    </Pie>
-                                                    <Tooltip />
-                                                </PieChart>
-                                            </ResponsiveContainer>
-                                        </div>
+                                        <button
+                                            onClick={() => setShowTracking(!showTracking)}
+                                            className="text-blue-600 hover:text-blue-800 flex items-center gap-2"
+                                        >
+                                            {showTracking ? 'Hide Calendar' : 'Show Calendar'}
+                                        </button>
                                     </div>
-
-                                    {/* Health Metrics Trends */}
-                                    <div className="bg-white rounded-xl shadow-md p-6 md:col-span-2">
-                                        <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                                            <FiTrendingUp className="mr-2 text-teal-600" /> Health Metrics Trends
-                                        </h2>
-                                        <div className="h-72">
-                                            <ResponsiveContainer width="100%" height="100%">
-                                                <LineChart data={healthMetrics} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                                    <XAxis dataKey="name" />
-                                                    <YAxis yAxisId="left" orientation="left" stroke="#0EA5E9" />
-                                                    <YAxis yAxisId="right" orientation="right" stroke="#10B981" />
-                                                    <Tooltip />
-                                                    <Legend />
-                                                    <Line yAxisId="left" type="monotone" dataKey="bloodPressure" stroke="#0EA5E9" activeDot={{ r: 8 }} name="Blood Pressure" />
-                                                    <Line yAxisId="left" type="monotone" dataKey="bloodSugar" stroke="#8B5CF6" name="Blood Sugar" />
-                                                    <Line yAxisId="right" type="monotone" dataKey="weight" stroke="#10B981" name="Weight (kg)" />
-                                                </LineChart>
-                                            </ResponsiveContainer>
-                                        </div>
-                                    </div>
+                                    {showTracking && (
+                                        <MedicineTracking prescriptionId={selectedPrescription.id} />
+                                    )}
                                 </div>
                             </div>
                         </div>
