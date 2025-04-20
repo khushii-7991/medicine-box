@@ -24,6 +24,13 @@ const MedicationSchedule = () => {
     const [schedules, setSchedules] = useState([]);
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [dateSchedule, setDateSchedule] = useState([]);
+    const [reminders, setReminders] = useState([]);
+
+    // Load reminders from localStorage
+    useEffect(() => {
+        const savedReminders = JSON.parse(localStorage.getItem('reminders') || '[]');
+        setReminders(savedReminders);
+    }, []);
 
     // Format date for display
     const formatDate = (date) => {
@@ -43,179 +50,105 @@ const MedicationSchedule = () => {
     // Get status color
     const getStatusColor = (status) => {
         switch(status) {
-            case 'taken':
-                return 'text-green-600';
-            case 'skipped':
-                return 'text-red-600';
+            case 'completed':
+                return 'bg-green-100 text-green-800';
+            case 'missed':
+                return 'bg-red-100 text-red-800';
+            case 'pending':
+                return 'bg-yellow-100 text-yellow-800';
+            case 'scheduled':
+                return 'bg-blue-100 text-blue-800';
             default:
-                return 'text-yellow-600';
+                return 'bg-gray-100 text-gray-800';
         }
     };
 
     // Get status icon
     const getStatusIcon = (status) => {
         switch(status) {
-            case 'taken':
+            case 'completed':
                 return <FiCheckCircle className="h-5 w-5 text-green-600" />;
-            case 'skipped':
+            case 'missed':
                 return <FiXCircle className="h-5 w-5 text-red-600" />;
-            default:
+            case 'pending':
                 return <FiAlertCircle className="h-5 w-5 text-yellow-600" />;
+            case 'scheduled':
+                return <FiCalendar className="h-5 w-5 text-blue-600" />;
+            default:
+                return <FiInfo className="h-5 w-5 text-gray-600" />;
         }
     };
 
-    // Load today's schedule
-    useEffect(() => {
-        const fetchTodaySchedule = async () => {
-            try {
-                setLoading(true);
-                const token = localStorage.getItem('patientToken');
-                if (!token) {
-                    navigate('/login/patient');
-                    return;
-                }
-
-                console.log('Fetching today\'s schedule...');
-                const response = await fetch('http://localhost:3000/schedule/today', {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
+    // Get calendar days with medicine status
+    const getCalendarDays = () => {
+        const year = selectedDate.getFullYear();
+        const month = selectedDate.getMonth();
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+        const daysInMonth = lastDay.getDate();
+        const startingDay = firstDay.getDay();
+        
+        const days = [];
+        
+        // Add empty cells for days before the first day of the month
+        for (let i = 0; i < startingDay; i++) {
+            days.push({ date: null, status: null, medicines: [] });
+        }
+        
+        // Add days of the month
+        for (let day = 1; day <= daysInMonth; day++) {
+            const date = new Date(year, month, day);
+            const dateString = date.toISOString().split('T')[0];
+            
+            // Find reminders for this date
+            const dateReminders = reminders.filter(reminder => {
+                const reminderDate = new Date(reminder.date);
+                const reminderEndDate = new Date(reminder.endDate);
+                return date >= reminderDate && date <= reminderEndDate;
+            });
+            
+            // Determine status based on reminders
+            let status = null;
+            if (dateReminders.length > 0) {
+                const todayReminders = dateReminders.filter(r => {
+                    const rDate = new Date(r.date);
+                    return rDate.toISOString().split('T')[0] === dateString;
                 });
 
-                if (!response.ok) {
-                    throw new Error('Failed to fetch today\'s schedule');
-                }
-
-                const data = await response.json();
-                console.log('Today\'s schedule data:', data);
-                
-                // Filter out any schedules with empty medicines arrays
-                const validSchedules = data.filter(schedule => 
-                    schedule.medicines && schedule.medicines.length > 0
-                );
-                
-                console.log('Valid schedules with medicines:', validSchedules);
-                setTodaySchedule(validSchedules);
-                setLoading(false);
-            } catch (err) {
-                console.error('Error fetching schedule:', err);
-                setError(err.message || 'Failed to load schedule');
-                setLoading(false);
-            }
-        };
-
-        const fetchStats = async () => {
-            try {
-                const token = localStorage.getItem('patientToken');
-                if (!token) {
-                    navigate('/login/patient');
-                    return;
-                }
-
-                const response = await fetch('http://localhost:3000/schedule/stats', {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
+                if (todayReminders.length > 0) {
+                    if (todayReminders.every(r => r.completed)) {
+                        status = 'completed';
+                    } else if (todayReminders.some(r => r.missed)) {
+                        status = 'missed';
+                    } else {
+                        status = 'pending';
                     }
-                });
-
-                if (!response.ok) {
-                    throw new Error('Failed to fetch statistics');
+                } else {
+                    status = 'scheduled';
                 }
-
-                const data = await response.json();
-                setStats(data);
-            } catch (err) {
-                console.error('Error fetching stats:', err);
             }
-        };
-
-        const fetchAllSchedules = async () => {
-            try {
-                const token = localStorage.getItem('patientToken');
-                if (!token) {
-                    navigate('/login/patient');
-                    return;
-                }
-
-                const response = await fetch('http://localhost:3000/schedule/patient', {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-
-                if (!response.ok) {
-                    throw new Error('Failed to fetch schedules');
-                }
-
-                const data = await response.json();
-                setSchedules(data);
-            } catch (err) {
-                console.error('Error fetching schedules:', err);
-            }
-        };
-
-        fetchTodaySchedule();
-        fetchStats();
-        fetchAllSchedules();
-    }, [navigate]);
-
-    // Update dose status
-    const updateDoseStatus = async (scheduleId, medicineId, doseIndex, status) => {
-        try {
-            const token = localStorage.getItem('patientToken');
-            if (!token) {
-                navigate('/login/patient');
-                return;
-            }
-
-            const response = await fetch('http://localhost:3000/schedule/update-dose', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                    scheduleId,
-                    date: new Date(),
-                    medicineId,
-                    doseIndex,
-                    status,
-                    notes: ''
-                })
+            
+            days.push({
+                date,
+                status,
+                medicines: dateReminders.map(r => ({
+                    name: r.medicineName,
+                    time: r.time,
+                    completed: r.completed,
+                    missed: r.missed,
+                    isToday: new Date(r.date).toISOString().split('T')[0] === dateString
+                }))
             });
+        }
+        
+        return days;
+    };
 
-            if (!response.ok) {
-                throw new Error('Failed to update dose status');
-            }
-
-            // Refresh today's schedule
-            const updatedResponse = await fetch('http://localhost:3000/schedule/today', {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            if (!updatedResponse.ok) {
-                throw new Error('Failed to refresh schedule');
-            }
-
-            const data = await updatedResponse.json();
-            setTodaySchedule(data);
-
-            // Refresh stats
-            const statsResponse = await fetch('http://localhost:3000/schedule/stats', {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            if (statsResponse.ok) {
-                const statsData = await statsResponse.json();
-                setStats(statsData);
-            }
-        } catch (err) {
-            console.error('Error updating dose status:', err);
-            setError(err.message || 'Failed to update dose status');
+    // Handle date click
+    const handleDateClick = (day) => {
+        if (day.date) {
+            setSelectedDate(day.date);
+            setDateSchedule(day.medicines);
         }
     };
 
@@ -223,399 +156,128 @@ const MedicationSchedule = () => {
     const changeDate = (direction) => {
         const newDate = new Date(selectedDate);
         if (direction === 'prev') {
-            newDate.setDate(newDate.getDate() - 1);
+            newDate.setMonth(newDate.getMonth() - 1);
         } else {
-            newDate.setDate(newDate.getDate() + 1);
+            newDate.setMonth(newDate.getMonth() + 1);
         }
         setSelectedDate(newDate);
-        
-        // Find schedule for this date
-        findScheduleForDate(newDate);
     };
 
-    // Find schedule for a specific date
-    const findScheduleForDate = (date) => {
-        const dateStr = date.toISOString().split('T')[0];
-        
-        const dateSchedules = [];
-        
-        schedules.forEach(schedule => {
-            const dailySchedule = schedule.dailySchedule.find(day => {
-                const dayDate = new Date(day.date);
-                return dayDate.toISOString().split('T')[0] === dateStr;
-            });
-            
-            if (dailySchedule) {
-                dateSchedules.push({
-                    scheduleId: schedule._id,
-                    prescriptionId: schedule.prescriptionId,
-                    date: dailySchedule.date,
-                    medicines: dailySchedule.medicines,
-                    completed: dailySchedule.completed
-                });
-            }
-        });
-        
-        setDateSchedule(dateSchedules);
-    };
-
-    // Handle tab change
-    useEffect(() => {
-        if (activeTab === 'calendar' && schedules.length > 0) {
-            findScheduleForDate(selectedDate);
-        }
-    }, [activeTab, schedules, selectedDate]);
+    const calendarDays = getCalendarDays();
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4 sm:px-6 lg:px-8">
-            <div className="max-w-4xl mx-auto">
-                <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 mb-2">
-                    Medication Schedule
-                </h1>
-                <p className="text-gray-600 mb-8">
-                    Track and manage your prescribed medications
-                </p>
+        <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold">Medication Calendar</h2>
+            </div>
 
-                {/* Stats Overview */}
-                <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-                    <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
-                        <FiActivity className="mr-2 text-indigo-600" />
-                        Medication Adherence
-                    </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="bg-indigo-50 rounded-lg p-4 text-center">
-                            <p className="text-sm text-gray-600 mb-1">Today's Doses</p>
-                            <p className="text-2xl font-bold text-indigo-700">
-                                {stats.todayStats.takenDoses}/{stats.todayStats.totalDoses}
-                            </p>
-                        </div>
-                        <div className="bg-indigo-50 rounded-lg p-4 text-center">
-                            <p className="text-sm text-gray-600 mb-1">Pending Doses</p>
-                            <p className="text-2xl font-bold text-amber-600">
-                                {stats.todayStats.pendingDoses}
-                            </p>
-                        </div>
-                        <div className="bg-indigo-50 rounded-lg p-4 text-center">
-                            <p className="text-sm text-gray-600 mb-1">Overall Adherence</p>
-                            <p className="text-2xl font-bold text-green-600">
-                                {Math.round(stats.adherenceRate)}%
-                            </p>
-                        </div>
+            {/* Calendar Header */}
+            <div className="flex justify-between items-center mb-4">
+                <button
+                    onClick={() => changeDate('prev')}
+                    className="p-2 rounded-full hover:bg-gray-100"
+                >
+                    <FiChevronLeft className="h-5 w-5 text-gray-600" />
+                </button>
+                <h3 className="text-lg font-semibold">
+                    {monthNames[selectedDate.getMonth()]} {selectedDate.getFullYear()}
+                </h3>
+                <button
+                    onClick={() => changeDate('next')}
+                    className="p-2 rounded-full hover:bg-gray-100"
+                >
+                    <FiChevronRight className="h-5 w-5 text-gray-600" />
+                </button>
+            </div>
+
+            {/* Calendar Grid */}
+            <div className="grid grid-cols-7 gap-2">
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                    <div key={day} className="text-center font-medium text-gray-600">
+                        {day}
+                    </div>
+                ))}
+                {calendarDays.map((day, index) => (
+                    <div
+                        key={index}
+                        onClick={() => handleDateClick(day)}
+                        className={`relative p-2 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors group ${
+                            day.date ? 'h-20' : 'h-20 bg-gray-50'
+                        } ${day.status ? getStatusColor(day.status) : ''}`}
+                    >
+                        {day.date && (
+                            <>
+                                <div className="text-sm font-medium">
+                                    {day.date.getDate()}
+                                </div>
+                                {day.status && (
+                                    <div className="absolute bottom-1 right-1">
+                                        {getStatusIcon(day.status)}
+                                    </div>
+                                )}
+                                {day.medicines.length > 0 && (
+                                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-xs">
+                                        {day.medicines.length} medicine{day.medicines.length > 1 ? 's' : ''}
+                                    </div>
+                                )}
+                            </>
+                        )}
+                    </div>
+                ))}
+            </div>
+
+            {/* Selected Date Details */}
+            {dateSchedule.length > 0 && (
+                <div className="mt-6">
+                    <h3 className="text-lg font-semibold mb-4">
+                        Medicines for {formatDate(selectedDate)}
+                    </h3>
+                    <div className="space-y-4">
+                        {dateSchedule.map((medicine, index) => (
+                            <div
+                                key={index}
+                                className="p-4 rounded-lg bg-white border border-gray-200"
+                            >
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <h4 className="font-medium">{medicine.name}</h4>
+                                        {medicine.isToday && (
+                                            <p className="text-sm text-gray-600">
+                                                Time: {formatTime(medicine.time)}
+                                            </p>
+                                        )}
+                                    </div>
+                                    {medicine.isToday && (
+                                        <div className={`w-4 h-4 rounded-full ${
+                                            medicine.completed ? 'bg-green-500' : 
+                                            medicine.missed ? 'bg-red-500' : 'bg-yellow-500'
+                                        }`} />
+                                    )}
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </div>
+            )}
 
-                {/* Tabs */}
-                <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-8">
-                    <div className="flex border-b border-gray-200">
-                        <button
-                            className={`px-6 py-3 text-sm font-medium ${
-                                activeTab === 'today'
-                                    ? 'text-indigo-600 border-b-2 border-indigo-600'
-                                    : 'text-gray-500 hover:text-gray-700'
-                            }`}
-                            onClick={() => setActiveTab('today')}
-                        >
-                            <FiClock className="inline mr-2" />
-                            Today's Schedule
-                        </button>
-                        <button
-                            className={`px-6 py-3 text-sm font-medium ${
-                                activeTab === 'calendar'
-                                    ? 'text-indigo-600 border-b-2 border-indigo-600'
-                                    : 'text-gray-500 hover:text-gray-700'
-                            }`}
-                            onClick={() => setActiveTab('calendar')}
-                        >
-                            <FiCalendar className="inline mr-2" />
-                            Calendar View
-                        </button>
-                        <button
-                            className={`px-6 py-3 text-sm font-medium ${
-                                activeTab === 'stats'
-                                    ? 'text-indigo-600 border-b-2 border-indigo-600'
-                                    : 'text-gray-500 hover:text-gray-700'
-                            }`}
-                            onClick={() => setActiveTab('stats')}
-                        >
-                            <FiPieChart className="inline mr-2" />
-                            Statistics
-                        </button>
-                    </div>
-
-                    {/* Today's Schedule Tab */}
-                    {activeTab === 'today' && (
-                        <div className="p-6">
-                            <h2 className="text-xl font-semibold text-gray-800 mb-4">
-                                {formatDate(new Date())}
-                            </h2>
-                            
-                            {loading ? (
-                                <div className="text-center py-8">
-                                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-                                    <p className="mt-4 text-gray-600">Loading your schedule...</p>
-                                </div>
-                            ) : error ? (
-                                <div className="bg-red-50 p-4 rounded-lg text-red-700">
-                                    {error}
-                                </div>
-                            ) : todaySchedule.length === 0 ? (
-                                <div className="text-center py-8 bg-gray-50 rounded-lg">
-                                    <FiInfo className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                                    <p className="text-gray-600">No medications scheduled for today</p>
-                                </div>
-                            ) : (
-                                <div>
-                                    {todaySchedule.map((schedule, scheduleIndex) => (
-                                        <div key={scheduleIndex} className="mb-6">
-                                            {schedule.prescriptionNotes && (
-                                                <div className="bg-blue-50 p-3 rounded-lg mb-4 text-sm text-blue-800">
-                                                    <strong>Doctor's Notes:</strong> {schedule.prescriptionNotes}
-                                                </div>
-                                            )}
-                                            
-                                            <div className="space-y-4">
-                                                {schedule.medicines.map((medicine, medicineIndex) => (
-                                                    <div 
-                                                        key={medicine.medicineId} 
-                                                        className={`bg-white border rounded-lg shadow-sm overflow-hidden transition-all duration-300 ${
-                                                            selectedMedicine === medicine.medicineId ? 'ring-2 ring-indigo-500' : ''
-                                                        }`}
-                                                    >
-                                                        <div 
-                                                            className="p-4 cursor-pointer flex justify-between items-center"
-                                                            onClick={() => setSelectedMedicine(
-                                                                selectedMedicine === medicine.medicineId ? null : medicine.medicineId
-                                                            )}
-                                                        >
-                                                            <div>
-                                                                <h3 className="font-medium text-gray-900">
-                                                                    {medicine.name}
-                                                                </h3>
-                                                                <p className="text-sm text-gray-600">
-                                                                    {medicine.dosage} • {medicine.whenToTake === 'before_meal' ? 'Before meals' : 'After meals'}
-                                                                </p>
-                                                            </div>
-                                                            <div className="flex items-center">
-                                                                <span className="text-sm text-gray-600 mr-2">
-                                                                    {medicine.doses.filter(d => d.status === 'taken').length}/{medicine.doses.length} taken
-                                                                </span>
-                                                                <div className={`transform transition-transform duration-300 ${
-                                                                    selectedMedicine === medicine.medicineId ? 'rotate-180' : ''
-                                                                }`}>
-                                                                    <FiChevronRight className="h-5 w-5 text-gray-400" />
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        
-                                                        {selectedMedicine === medicine.medicineId && (
-                                                            <div className="border-t border-gray-200 p-4 bg-gray-50">
-                                                                <h4 className="text-sm font-medium text-gray-700 mb-3">
-                                                                    Today's Doses
-                                                                </h4>
-                                                                <div className="space-y-3">
-                                                                    {medicine.doses.map((dose, doseIndex) => (
-                                                                        <div key={doseIndex} className="flex items-center justify-between bg-white p-3 rounded-lg border border-gray-200">
-                                                                            <div className="flex items-center">
-                                                                                {getStatusIcon(dose.status)}
-                                                                                <span className="ml-2 text-sm font-medium">
-                                                                                    {formatTime(dose.time)}
-                                                                                </span>
-                                                                            </div>
-                                                                            <div className="flex space-x-2">
-                                                                                <button
-                                                                                    onClick={() => updateDoseStatus(
-                                                                                        schedule.scheduleId,
-                                                                                        medicine.medicineId,
-                                                                                        doseIndex,
-                                                                                        'taken'
-                                                                                    )}
-                                                                                    disabled={dose.status === 'taken'}
-                                                                                    className={`px-3 py-1 rounded-md text-xs font-medium ${
-                                                                                        dose.status === 'taken'
-                                                                                            ? 'bg-green-100 text-green-800 cursor-not-allowed'
-                                                                                            : 'bg-green-600 text-white hover:bg-green-700'
-                                                                                    }`}
-                                                                                >
-                                                                                    Taken
-                                                                                </button>
-                                                                                <button
-                                                                                    onClick={() => updateDoseStatus(
-                                                                                        schedule.scheduleId,
-                                                                                        medicine.medicineId,
-                                                                                        doseIndex,
-                                                                                        'skipped'
-                                                                                    )}
-                                                                                    disabled={dose.status === 'skipped'}
-                                                                                    className={`px-3 py-1 rounded-md text-xs font-medium ${
-                                                                                        dose.status === 'skipped'
-                                                                                            ? 'bg-red-100 text-red-800 cursor-not-allowed'
-                                                                                            : 'bg-red-600 text-white hover:bg-red-700'
-                                                                                    }`}
-                                                                                >
-                                                                                    Skip
-                                                                                </button>
-                                                                            </div>
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {/* Calendar View Tab */}
-                    {activeTab === 'calendar' && (
-                        <div className="p-6">
-                            <div className="flex items-center justify-between mb-6">
-                                <button
-                                    onClick={() => changeDate('prev')}
-                                    className="p-2 rounded-full hover:bg-gray-100"
-                                >
-                                    <FiChevronLeft className="h-5 w-5 text-gray-600" />
-                                </button>
-                                <h2 className="text-xl font-semibold text-gray-800">
-                                    {formatDate(selectedDate)}
-                                </h2>
-                                <button
-                                    onClick={() => changeDate('next')}
-                                    className="p-2 rounded-full hover:bg-gray-100"
-                                >
-                                    <FiChevronRight className="h-5 w-5 text-gray-600" />
-                                </button>
-                            </div>
-                            
-                            {dateSchedule.length === 0 ? (
-                                <div className="text-center py-8 bg-gray-50 rounded-lg">
-                                    <FiInfo className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                                    <p className="text-gray-600">No medications scheduled for this date</p>
-                                </div>
-                            ) : (
-                                <div>
-                                    {dateSchedule.map((schedule, scheduleIndex) => (
-                                        <div key={scheduleIndex} className="mb-6">
-                                            <div className="space-y-4">
-                                                {schedule.medicines.map((medicine, medicineIndex) => (
-                                                    <div 
-                                                        key={medicine.medicineId} 
-                                                        className="bg-white border rounded-lg shadow-sm overflow-hidden"
-                                                    >
-                                                        <div className="p-4">
-                                                            <h3 className="font-medium text-gray-900">
-                                                                {medicine.name}
-                                                            </h3>
-                                                            <p className="text-sm text-gray-600">
-                                                                {medicine.dosage} • {medicine.whenToTake === 'before_meal' ? 'Before meals' : 'After meals'}
-                                                            </p>
-                                                            
-                                                            <div className="mt-3 space-y-2">
-                                                                {medicine.doses.map((dose, doseIndex) => (
-                                                                    <div key={doseIndex} className="flex items-center text-sm">
-                                                                        {getStatusIcon(dose.status)}
-                                                                        <span className={`ml-2 ${getStatusColor(dose.status)}`}>
-                                                                            {formatTime(dose.time)} - {dose.status.charAt(0).toUpperCase() + dose.status.slice(1)}
-                                                                        </span>
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {/* Statistics Tab */}
-                    {activeTab === 'stats' && (
-                        <div className="p-6">
-                            <h2 className="text-xl font-semibold text-gray-800 mb-6">
-                                Medication Statistics
-                            </h2>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="bg-white rounded-lg shadow-sm border p-4">
-                                    <h3 className="text-lg font-medium text-gray-800 mb-3">
-                                        Overall Adherence
-                                    </h3>
-                                    <div className="flex items-center justify-center">
-                                        <div className="relative h-32 w-32">
-                                            <svg className="h-full w-full" viewBox="0 0 36 36">
-                                                <path
-                                                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                                                    fill="none"
-                                                    stroke="#eee"
-                                                    strokeWidth="3"
-                                                />
-                                                <path
-                                                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                                                    fill="none"
-                                                    stroke="#4f46e5"
-                                                    strokeWidth="3"
-                                                    strokeDasharray={`${stats.adherenceRate}, 100`}
-                                                />
-                                            </svg>
-                                            <div className="absolute inset-0 flex items-center justify-center">
-                                                <span className="text-2xl font-bold text-indigo-600">
-                                                    {Math.round(stats.adherenceRate)}%
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div className="bg-white rounded-lg shadow-sm border p-4">
-                                    <h3 className="text-lg font-medium text-gray-800 mb-3">
-                                        Schedule Summary
-                                    </h3>
-                                    <div className="space-y-3">
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-gray-600">Total Schedules</span>
-                                            <span className="font-medium">{stats.totalSchedules || 0}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-gray-600">Active Schedules</span>
-                                            <span className="font-medium">{stats.activeSchedules || 0}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-gray-600">Completed Schedules</span>
-                                            <span className="font-medium">{stats.completedSchedules || 0}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-gray-600">Today's Adherence</span>
-                                            <span className="font-medium">
-                                                {Math.round(stats.todayStats.adherenceRate || 0)}%
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div className="mt-6">
-                                <div className="bg-indigo-50 p-4 rounded-lg">
-                                    <h3 className="text-lg font-medium text-indigo-800 mb-2">
-                                        Tips for Better Medication Adherence
-                                    </h3>
-                                    <ul className="list-disc pl-5 space-y-1 text-indigo-700">
-                                        <li>Set daily reminders on your phone</li>
-                                        <li>Keep medications in a visible place</li>
-                                        <li>Use a pill organizer for multiple medications</li>
-                                        <li>Incorporate taking medication into your daily routine</li>
-                                        <li>Ask a family member to help remind you</li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                    )}
+            {/* Legend */}
+            <div className="mt-6 flex justify-center space-x-4">
+                <div className="flex items-center">
+                    <div className="w-4 h-4 rounded-full bg-green-500 mr-2"></div>
+                    <span className="text-sm">Completed</span>
+                </div>
+                <div className="flex items-center">
+                    <div className="w-4 h-4 rounded-full bg-yellow-500 mr-2"></div>
+                    <span className="text-sm">Pending</span>
+                </div>
+                <div className="flex items-center">
+                    <div className="w-4 h-4 rounded-full bg-red-500 mr-2"></div>
+                    <span className="text-sm">Missed</span>
+                </div>
+                <div className="flex items-center">
+                    <div className="w-4 h-4 rounded-full bg-blue-500 mr-2"></div>
+                    <span className="text-sm">Scheduled</span>
                 </div>
             </div>
         </div>

@@ -4,7 +4,7 @@ import axios from 'axios';
 import { 
     FiCalendar, FiClock, FiFileText, FiUpload, FiBell, 
     FiPhoneCall, FiActivity, FiPieChart, FiTrendingUp, FiUser, FiCheckCircle, FiAlertTriangle,
-    FiPlus, FiCheck, FiX, FiLogOut, FiAward
+    FiPlus, FiCheck, FiX, FiLogOut, FiSearch, FiAward
 } from 'react-icons/fi';
 import { 
     AreaChart, Area, BarChart, Bar, PieChart, Pie, LineChart, Line, 
@@ -238,16 +238,16 @@ const Patient = () => {
                             <div className="ml-3">
                                 <p className="text-sm font-medium text-gray-700">{patientData.email}</p>
                                 <p className="text-xs text-gray-500">Patient ID: {patientData.id?.substring(0, 8)}</p>
-                            </div>
-                        </div>
-                    </div>
+                </div>
+                </div>
+            </div>
                 </div>
 
-                {error && (
+            {error && (
                     <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-lg">
                         <p>{error}</p>
-                    </div>
-                )}
+                </div>
+            )}
 
                 {loading ? (
                     <div className="flex justify-center items-center h-64">
@@ -255,11 +255,30 @@ const Patient = () => {
                     </div>
                 ) : (
                     <>
+                        {/* Feature Cards */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                            {/* Find Doctor Card */}
+                            <div onClick={() => navigate('/find-doctor')} className="bg-white rounded-xl shadow-md p-6 cursor-pointer transform transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <p className="text-sm font-medium text-gray-600">Find Doctor</p>
+                                        <p className="text-2xl font-bold text-gray-800 mt-1">Search</p>
+                                    </div>
+                                    <div className="bg-indigo-100 p-3 rounded-full">
+                                        <FiSearch className="h-6 w-6 text-indigo-600" />
+                                    </div>
+                                </div>
+                                <div className="mt-4">
+                                    <Link to="/find-doctor" className="text-sm text-indigo-600 hover:text-indigo-800 font-medium">Find doctors near you →</Link>
+                                </div>
+                            </div>
+                        </div>
+
                         {/* Stats Cards */}
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                             <div className="bg-white rounded-xl shadow-md p-6 border-t-4 border-blue-500 transform transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
                                 <div className="flex justify-between items-start">
-                                    <div>
+                            <div>
                                         <p className="text-sm font-medium text-gray-600">Upcoming Appointments</p>
                                         <p className="text-2xl font-bold text-gray-800 mt-1">{stats.upcomingAppointments}</p>
                                     </div>
@@ -268,13 +287,13 @@ const Patient = () => {
                                     </div>
                                 </div>
                                 <div className="mt-4">
-                                    <a href="/my-appointments" className="text-sm text-blue-600 hover:text-blue-800 font-medium">View all appointments →</a>
+                                    <Link to="/my-appointments" className="text-sm text-blue-600 hover:text-blue-800 font-medium">View all appointments →</Link>
                                 </div>
                             </div>
 
                             <div className="bg-white rounded-xl shadow-md p-6 border-t-4 border-purple-500 transform transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
                                 <div className="flex justify-between items-start">
-                                    <div>
+                            <div>
                                         <p className="text-sm font-medium text-gray-600">Active Prescriptions</p>
                                         <p className="text-2xl font-bold text-gray-800 mt-1">{stats.activePrescriptions}</p>
                                     </div>
@@ -289,7 +308,7 @@ const Patient = () => {
 
                             <div className="bg-white rounded-xl shadow-md p-6 border-t-4 border-yellow-500 transform transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
                                 <div className="flex justify-between items-start">
-                                    <div>
+                            <div>
                                         <p className="text-sm font-medium text-gray-600">Pending Medications</p>
                                         <p className="text-2xl font-bold text-gray-800 mt-1">{stats.pendingMedications}</p>
                                     </div>
@@ -298,13 +317,13 @@ const Patient = () => {
                                     </div>
                                 </div>
                                 <div className="mt-4">
-                                    <a href="/medication-schedule" className="text-sm text-yellow-600 hover:text-yellow-800 font-medium">View medication schedule →</a>
+                                    <Link to="/medication-schedule" className="text-sm text-yellow-600 hover:text-yellow-800 font-medium">View medication schedule →</Link>
                                 </div>
                             </div>
 
                             <div className="bg-white rounded-xl shadow-md p-6 border-t-4 border-green-500 transform transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
                                 <div className="flex justify-between items-start">
-                                    <div>
+                            <div>
                                         <p className="text-sm font-medium text-gray-600">Completed Medications</p>
                                         <p className="text-2xl font-bold text-gray-800 mt-1">{stats.completedMedications}</p>
                                     </div>
@@ -313,14 +332,14 @@ const Patient = () => {
                                     </div>
                                 </div>
                                 <div className="mt-4">
-                                    <a href="/medication-schedule" className="text-sm text-green-600 hover:text-green-800 font-medium">View medication schedule →</a>
+                                    <Link to="/medication-schedule" className="text-sm text-green-600 hover:text-green-800 font-medium">View medication schedule →</Link>
                                 </div>
                             </div>
 
                             {/* Streak Stats Card */}
                             <div className="bg-white rounded-xl shadow-md p-6 border-t-4 border-amber-500 transform transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
                                 <div className="flex justify-between items-start">
-                                    <div>
+                            <div>
                                         <p className="text-sm font-medium text-gray-600">Current Streak</p>
                                         <p className="text-2xl font-bold text-gray-800 mt-1">{streakData.currentStreak} days</p>
                                     </div>
@@ -428,9 +447,9 @@ const Patient = () => {
                                         </div>
                                         <div className="text-center">
                                             <p className="text-sm text-gray-600">Your medication adherence score</p>
-                                            <a href="/medication-schedule" className="text-sm text-teal-600 hover:text-teal-800 font-medium mt-2 inline-block">
+                                            <Link to="/medication-schedule" className="text-sm text-teal-600 hover:text-teal-800 font-medium mt-2 inline-block">
                                                 Improve your score →
-                                            </a>
+                                            </Link>
                                         </div>
                                     </div>
                                 </div>
@@ -487,7 +506,7 @@ const Patient = () => {
                                     <h3 className="text-lg font-medium text-gray-900">Quick Actions</h3>
                                 </div>
                                 <div className="p-4 space-y-3">
-                                    <a href="/medication-schedule" className="block">
+                                    <Link to="/medication-schedule" className="block">
                                         <button className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-indigo-50 to-indigo-100 text-indigo-700 rounded-lg hover:shadow-md transition-all duration-300 group-hover:from-indigo-100 hover:to-indigo-200 transition-all duration-200">
                                             <div className="flex items-center">
                                                 <FiClock className="mr-3 h-5 w-5" />
@@ -497,7 +516,7 @@ const Patient = () => {
                                                 <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
                                             </svg>
                                         </button>
-                                    </a>
+                                    </Link>
                                     <Link to="/view-prescriptions" className="block">
                                         <button className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-pink-50 to-pink-100 text-pink-700 rounded-lg hover:shadow-md transition-all duration-300 group-hover:from-pink-100 hover:to-pink-200 transition-all duration-200">
                                             <div className="flex items-center">
@@ -509,7 +528,18 @@ const Patient = () => {
                                             </svg>
                                         </button>
                                     </Link>
-                                    <a href="/book-appointment" className="block">
+                                    <Link to="/find-doctor" className="block">
+                                        <button className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-indigo-50 to-indigo-100 text-indigo-700 rounded-lg hover:shadow-md transition-all duration-300 group-hover:from-indigo-100 hover:to-indigo-200 transition-all duration-200">
+                                            <div className="flex items-center">
+                                                <FiSearch className="mr-3 h-5 w-5" />
+                                                <span>Find Doctor</span>
+                                            </div>
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 group-hover:translate-x-1 transition-transform duration-200" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
+                                            </svg>
+                                        </button>
+                                    </Link>
+                                    <Link to="/book-appointment" className="block">
                                         <button className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 rounded-lg hover:shadow-md transition-all duration-300 group-hover:from-blue-100 hover:to-blue-200 transition-all duration-200">
                                             <div className="flex items-center">
                                                 <FiCalendar className="mr-3 h-5 w-5" />
@@ -519,7 +549,7 @@ const Patient = () => {
                                                 <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
                                             </svg>
                                         </button>
-                                    </a>
+                                    </Link>
                                     <button 
                                         onClick={handleLogout}
                                         className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-red-50 to-red-100 text-red-700 rounded-lg hover:shadow-md transition-all duration-300 group-hover:from-red-100 hover:to-red-200 transition-all duration-200"
@@ -553,14 +583,14 @@ const Patient = () => {
                                             <h3 className="text-lg font-semibold text-gray-900 text-center">View Prescriptions</h3>
                                         </div>
                                         <p className="text-gray-600 mb-6 text-sm text-center">Access all your prescriptions, medicine schedules, and doctor's notes in one place.</p>
-                                        <a href="/view-prescriptions" className="block w-full">
+                                        <Link to="/view-prescriptions" className="block w-full">
                                             <button className="w-full bg-gradient-to-r from-pink-500 to-pink-600 text-white py-2.5 px-4 rounded-lg hover:shadow-md transition-all duration-300 flex items-center justify-center gap-2 group-hover:from-pink-600 group-hover:to-pink-700">
                                                 <span>View All</span>
                                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 group-hover:translate-x-1 transition-transform duration-200" viewBox="0 0 20 20" fill="currentColor">
                                                     <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
                                                 </svg>
                                             </button>
-                                        </a>
+                                        </Link>
                                     </div>
                                 </div>
 
@@ -576,14 +606,14 @@ const Patient = () => {
                                             <h3 className="text-lg font-semibold text-gray-900 text-center">Medication Schedule</h3>
                                         </div>
                                         <p className="text-gray-600 mb-6 text-sm text-center">Track your medication schedule, mark doses as taken, and never miss a dose.</p>
-                                        <a href="/medication-schedule" className="block w-full">
+                                        <Link to="/medication-schedule" className="block w-full">
                                             <button className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white py-2.5 px-4 rounded-lg hover:shadow-md transition-all duration-300 flex items-center justify-center gap-2 group-hover:from-indigo-600 group-hover:to-purple-700">
                                                 <span>View Schedule</span>
                                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 group-hover:translate-x-1 transition-transform duration-200" viewBox="0 0 20 20" fill="currentColor">
                                                     <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
                                                 </svg>
                                             </button>
-                                        </a>
+                                        </Link>
                                     </div>
                                 </div>
 
@@ -599,14 +629,14 @@ const Patient = () => {
                                             <h3 className="text-lg font-semibold text-gray-900 text-center">Book Appointment</h3>
                                         </div>
                                         <p className="text-gray-600 mb-6 text-sm text-center">Schedule a new appointment with your doctor quickly and easily.</p>
-                                        <a href="/book-appointment" className="block w-full">
+                                        <Link to="/book-appointment" className="block w-full">
                                             <button className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-2.5 px-4 rounded-lg hover:shadow-md transition-all duration-300 flex items-center justify-center gap-2 group-hover:from-blue-600 group-hover:to-blue-700">
                                                 <span>Book Now</span>
                                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 group-hover:translate-x-1 transition-transform duration-200" viewBox="0 0 20 20" fill="currentColor">
                                                     <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
                                                 </svg>
                                             </button>
-                                        </a>
+                                        </Link>
                                     </div>
                                 </div>
 
@@ -622,14 +652,14 @@ const Patient = () => {
                                             <h3 className="text-lg font-semibold text-gray-900 text-center">Upload Reports</h3>
                                         </div>
                                         <p className="text-gray-600 mb-6 text-sm text-center">Upload your medical reports and test results for your doctor to review.</p>
-                                        <a href="/upload-reports" className="block w-full">
+                                        <Link to="/upload-reports" className="block w-full">
                                             <button className="w-full bg-gradient-to-r from-purple-500 to-purple-600 text-white py-2.5 px-4 rounded-lg hover:shadow-md transition-all duration-300 flex items-center justify-center gap-2 group-hover:from-purple-600 group-hover:to-purple-700">
                                                 <span>Upload Now</span>
                                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 group-hover:translate-x-1 transition-transform duration-200" viewBox="0 0 20 20" fill="currentColor">
                                                     <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
                                                 </svg>
                                             </button>
-                                        </a>
+                                        </Link>
                                     </div>
                                 </div>
 
@@ -645,14 +675,14 @@ const Patient = () => {
                                             <h3 className="text-lg font-semibold text-gray-900 text-center">Health Reminders</h3>
                                         </div>
                                         <p className="text-gray-600 mb-6 text-sm text-center">Set up reminders for medications, appointments, and other health activities.</p>
-                                        <a href="/health-reminders" className="block w-full">
+                                        <Link to="/health-reminders" className="block w-full">
                                             <button className="w-full bg-gradient-to-r from-amber-500 to-amber-600 text-white py-2.5 px-4 rounded-lg hover:shadow-md transition-all duration-300 flex items-center justify-center gap-2 group-hover:from-amber-600 group-hover:to-amber-700">
                                                 <span>Manage Reminders</span>
                                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 group-hover:translate-x-1 transition-transform duration-200" viewBox="0 0 20 20" fill="currentColor">
                                                     <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
                                                 </svg>
                                             </button>
-                                        </a>
+                                        </Link>
                                     </div>
                                 </div>
 
@@ -668,14 +698,14 @@ const Patient = () => {
                                             <h3 className="text-lg font-semibold text-gray-900 text-center">Emergency Help</h3>
                                         </div>
                                         <p className="text-gray-600 mb-6 text-sm text-center">Quick access to emergency contacts and services when you need them most.</p>
-                                        <a href="/emergency-help" className="block w-full">
+                                        <Link to="/emergency-help" className="block w-full">
                                             <button className="w-full bg-gradient-to-r from-red-500 to-red-600 text-white py-2.5 px-4 rounded-lg hover:shadow-md transition-all duration-300 flex items-center justify-center gap-2 group-hover:from-red-600 group-hover:to-red-700">
                                                 <span>Call Now</span>
                                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 group-hover:translate-x-1 transition-transform duration-200" viewBox="0 0 20 20" fill="currentColor">
                                                     <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
                                                 </svg>
                                             </button>
-                                        </a>
+                                        </Link>
                                     </div>
                                 </div>
 
@@ -691,14 +721,14 @@ const Patient = () => {
                                             <h3 className="text-lg font-semibold text-gray-900 text-center">My Appointments</h3>
                                         </div>
                                         <p className="text-gray-600 mb-6 text-sm text-center">View and manage all your upcoming and past appointments.</p>
-                                        <a href="/my-appointments" className="block w-full">
+                                        <Link to="/my-appointments" className="block w-full">
                                             <button className="w-full bg-gradient-to-r from-teal-500 to-teal-600 text-white py-2.5 px-4 rounded-lg hover:shadow-md transition-all duration-300 flex items-center justify-center gap-2 group-hover:from-teal-600 group-hover:to-teal-700">
                                                 <span>View Appointments</span>
                                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 group-hover:translate-x-1 transition-transform duration-200" viewBox="0 0 20 20" fill="currentColor">
                                                     <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
                                                 </svg>
                                             </button>
-                                        </a>
+                                        </Link>
                                     </div>
                                 </div>
 
@@ -714,20 +744,20 @@ const Patient = () => {
                                             <h3 className="text-lg font-semibold text-gray-900 text-center">My Profile</h3>
                                         </div>
                                         <p className="text-gray-600 mb-6 text-sm text-center">View and update your personal information and medical history.</p>
-                                        <a href="/profile" className="block w-full">
+                                        <Link to="/profile" className="block w-full">
                                             <button className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-2.5 px-4 rounded-lg hover:shadow-md transition-all duration-300 flex items-center justify-center gap-2 group-hover:from-green-600 group-hover:to-green-700">
                                                 <span>View Profile</span>
                                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 group-hover:translate-x-1 transition-transform duration-200" viewBox="0 0 20 20" fill="currentColor">
                                                     <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
                                                 </svg>
                                             </button>
-                                        </a>
-                                    </div>
-                                </div>
+                                        </Link>
                             </div>
                         </div>
+                    </div>
+                </div>
                     </>
-                )}
+            )}
             </div>
         </div>
     );
