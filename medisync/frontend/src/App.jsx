@@ -21,6 +21,7 @@ import ProtectedDoctorRoute from './components/ProtectedDoctorRoute';
 import ProtectedPatientRoute from './components/ProtectedPatientRoute';
 import FindDoctor from "./components/FindDoctor";
 import DoctorProfile from "./components/DoctorProfile";
+import AddHospital from "./components/AddHospital";
 import Layout from './components/Layout';
 import Profile from './components/Profile';
 import { Toaster } from 'react-hot-toast';
@@ -194,6 +195,11 @@ function App() {
             <Layout userType="doctor">
               <PatientList />
             </Layout>
+          </ProtectedDoctorRoute>
+        } />
+        <Route path='/add-hospital' element={
+          <ProtectedDoctorRoute>
+            <AddHospital />
           </ProtectedDoctorRoute>
         } />
       </Routes>

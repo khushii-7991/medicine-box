@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     Box,
     Card,
@@ -15,6 +16,9 @@ import {
     ListItem,
     ListItemIcon,
     ListItemText,
+    CardActionArea,
+    CardMedia,
+    CardActions,
 } from '@mui/material';
 import {
     LocalHospital as HospitalIcon,
@@ -26,6 +30,11 @@ import {
     Cancel as CancelIcon,
     Star as StarIcon,
     Money as MoneyIcon,
+    Add as AddIcon,
+    MedicalServices as MedicalIcon,
+    CalendarMonth as CalendarIcon,
+    People as PeopleIcon,
+    Dashboard as DashboardIcon,
 } from '@mui/icons-material';
 
 const defaultData = {
@@ -45,6 +54,7 @@ const DoctorProfile = () => {
     const [isEditing, setIsEditing] = useState(false);
     const [doctorData, setDoctorData] = useState(null);
     const [editedData, setEditedData] = useState(null);
+    const navigate = useNavigate();
 
     useEffect(() => {
         const storedData = localStorage.getItem('doctorData');
@@ -309,6 +319,185 @@ const DoctorProfile = () => {
                                     </ListItem>
                                 </List>
                             </CardContent>
+                        </Card>
+                    </Grid>
+                </Grid>
+
+                {/* Main Features Section */}
+                <Typography variant="h5" sx={{ fontWeight: 'bold', mt: 6, mb: 3 }}>
+                    Main Features
+                </Typography>
+                <Grid container spacing={3}>
+                    {/* Add Hospital Card */}
+                    <Grid item xs={12} sm={6} md={3}>
+                        <Card 
+                            elevation={3} 
+                            sx={{ 
+                                height: '100%', 
+                                transition: 'transform 0.3s, box-shadow 0.3s',
+                                '&:hover': {
+                                    transform: 'translateY(-5px)',
+                                    boxShadow: '0 12px 20px -10px rgba(0,105,255,0.28), 0 4px 20px 0px rgba(0, 0, 0, 0.12), 0 7px 8px -5px rgba(0,105,255,0.2)'
+                                }
+                            }}
+                        >
+                            <CardActionArea onClick={() => navigate('/add-hospital')} sx={{ height: '100%' }}>
+                                <Box sx={{ position: 'relative', overflow: 'hidden' }}>
+                                    <CardMedia
+                                        component="div"
+                                        sx={{
+                                            height: 140,
+                                            bgcolor: 'primary.main',
+                                            display: 'flex',
+                                            justifyContent: 'center',
+                                            alignItems: 'center'
+                                        }}
+                                    >
+                                        <HospitalIcon sx={{ fontSize: 80, color: 'white', opacity: 0.8 }} />
+                                    </CardMedia>
+                                    <Box
+                                        sx={{
+                                            position: 'absolute',
+                                            top: 0,
+                                            right: 0,
+                                            bgcolor: 'primary.dark',
+                                            color: 'white',
+                                            p: 1,
+                                            borderBottomLeftRadius: 8
+                                        }}
+                                    >
+                                        <AddIcon />
+                                    </Box>
+                                </Box>
+                                <CardContent sx={{ flexGrow: 1 }}>
+                                    <Typography gutterBottom variant="h6" component="div" sx={{ fontWeight: 'bold' }}>
+                                        Add Hospital
+                                    </Typography>
+                                    <Typography variant="body2" color="text.secondary">
+                                        Register a new hospital in the system for doctors to select during registration.
+                                    </Typography>
+                                </CardContent>
+                            </CardActionArea>
+                        </Card>
+                    </Grid>
+
+                    {/* Manage Appointments Card */}
+                    <Grid item xs={12} sm={6} md={3}>
+                        <Card 
+                            elevation={3} 
+                            sx={{ 
+                                height: '100%', 
+                                transition: 'transform 0.3s, box-shadow 0.3s',
+                                '&:hover': {
+                                    transform: 'translateY(-5px)',
+                                    boxShadow: '0 12px 20px -10px rgba(76,175,80,0.28), 0 4px 20px 0px rgba(0, 0, 0, 0.12), 0 7px 8px -5px rgba(76,175,80,0.2)'
+                                }
+                            }}
+                        >
+                            <CardActionArea sx={{ height: '100%' }}>
+                                <Box sx={{ position: 'relative', overflow: 'hidden' }}>
+                                    <CardMedia
+                                        component="div"
+                                        sx={{
+                                            height: 140,
+                                            bgcolor: 'success.main',
+                                            display: 'flex',
+                                            justifyContent: 'center',
+                                            alignItems: 'center'
+                                        }}
+                                    >
+                                        <CalendarIcon sx={{ fontSize: 80, color: 'white', opacity: 0.8 }} />
+                                    </CardMedia>
+                                </Box>
+                                <CardContent sx={{ flexGrow: 1 }}>
+                                    <Typography gutterBottom variant="h6" component="div" sx={{ fontWeight: 'bold' }}>
+                                        Manage Appointments
+                                    </Typography>
+                                    <Typography variant="body2" color="text.secondary">
+                                        View and manage your upcoming patient appointments.
+                                    </Typography>
+                                </CardContent>
+                            </CardActionArea>
+                        </Card>
+                    </Grid>
+
+                    {/* Patient Records Card */}
+                    <Grid item xs={12} sm={6} md={3}>
+                        <Card 
+                            elevation={3} 
+                            sx={{ 
+                                height: '100%', 
+                                transition: 'transform 0.3s, box-shadow 0.3s',
+                                '&:hover': {
+                                    transform: 'translateY(-5px)',
+                                    boxShadow: '0 12px 20px -10px rgba(255,152,0,0.28), 0 4px 20px 0px rgba(0, 0, 0, 0.12), 0 7px 8px -5px rgba(255,152,0,0.2)'
+                                }
+                            }}
+                        >
+                            <CardActionArea sx={{ height: '100%' }}>
+                                <Box sx={{ position: 'relative', overflow: 'hidden' }}>
+                                    <CardMedia
+                                        component="div"
+                                        sx={{
+                                            height: 140,
+                                            bgcolor: 'warning.main',
+                                            display: 'flex',
+                                            justifyContent: 'center',
+                                            alignItems: 'center'
+                                        }}
+                                    >
+                                        <PeopleIcon sx={{ fontSize: 80, color: 'white', opacity: 0.8 }} />
+                                    </CardMedia>
+                                </Box>
+                                <CardContent sx={{ flexGrow: 1 }}>
+                                    <Typography gutterBottom variant="h6" component="div" sx={{ fontWeight: 'bold' }}>
+                                        Patient Records
+                                    </Typography>
+                                    <Typography variant="body2" color="text.secondary">
+                                        Access and manage your patient medical records.
+                                    </Typography>
+                                </CardContent>
+                            </CardActionArea>
+                        </Card>
+                    </Grid>
+
+                    {/* Medical Services Card */}
+                    <Grid item xs={12} sm={6} md={3}>
+                        <Card 
+                            elevation={3} 
+                            sx={{ 
+                                height: '100%', 
+                                transition: 'transform 0.3s, box-shadow 0.3s',
+                                '&:hover': {
+                                    transform: 'translateY(-5px)',
+                                    boxShadow: '0 12px 20px -10px rgba(233,30,99,0.28), 0 4px 20px 0px rgba(0, 0, 0, 0.12), 0 7px 8px -5px rgba(233,30,99,0.2)'
+                                }
+                            }}
+                        >
+                            <CardActionArea sx={{ height: '100%' }}>
+                                <Box sx={{ position: 'relative', overflow: 'hidden' }}>
+                                    <CardMedia
+                                        component="div"
+                                        sx={{
+                                            height: 140,
+                                            bgcolor: 'error.main',
+                                            display: 'flex',
+                                            justifyContent: 'center',
+                                            alignItems: 'center'
+                                        }}
+                                    >
+                                        <MedicalIcon sx={{ fontSize: 80, color: 'white', opacity: 0.8 }} />
+                                    </CardMedia>
+                                </Box>
+                                <CardContent sx={{ flexGrow: 1 }}>
+                                    <Typography gutterBottom variant="h6" component="div" sx={{ fontWeight: 'bold' }}>
+                                        Medical Services
+                                    </Typography>
+                                    <Typography variant="body2" color="text.secondary">
+                                        Manage the medical services you offer to patients.
+                                    </Typography>
+                                </CardContent>
+                            </CardActionArea>
                         </Card>
                     </Grid>
                 </Grid>

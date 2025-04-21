@@ -1,13 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import axios from 'axios';
 
 const LoginDoctor = () => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
+    speciality: '',
+    city: '',
+    hospital: '',
+    experience: 0,
+    consultationFee: 0,
   });
+  const [hospitals, setHospitals] = useState([]);
+  const [showHospitalDropdown, setShowHospitalDropdown] = useState(false);
+  const [hospitalSearch, setHospitalSearch] = useState('');
   const [isSignup, setIsSignup] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
@@ -23,6 +32,18 @@ const LoginDoctor = () => {
       toast.success('Already logged in as doctor');
       navigate('/doctor-profile');
     }
+
+    // Fetch hospitals from the database
+    const fetchHospitals = async () => {
+      try {
+        const response = await axios.get('http://localhost:3000/hospital');
+        setHospitals(response.data);
+      } catch (error) {
+        console.error('Error fetching hospitals:', error);
+      }
+    };
+
+    fetchHospitals();
   }, [navigate]);
 
   const handleChange = (e) => {
@@ -62,7 +83,16 @@ const LoginDoctor = () => {
         if (isSignup) {
           setIsSignup(false);
           toast.success('Registration successful! Please login.');
-          setFormData({ name: '', email: '', password: '' });
+          setFormData({
+            name: '',
+            email: '',
+            password: '',
+            speciality: '',
+            city: '',
+            hospital: '',
+            experience: 0,
+            consultationFee: 0,
+          });
           return;
         }
         navigate(from);
@@ -127,27 +157,183 @@ const LoginDoctor = () => {
 
               <form onSubmit={handleSubmit} className="space-y-6">
                 {isSignup && (
-                  <div className="space-y-2">
-                    <label className="block text-gray-700 text-sm font-semibold">
-                      Full Name
-                    </label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                        </svg>
+                  <>
+                    <div className="space-y-2">
+                      <label className="block text-gray-700 text-sm font-semibold">
+                        Full Name
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                        <input
+                          type="text"
+                          name="name"
+                          value={formData.name}
+                          onChange={handleChange}
+                          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                          placeholder="Dr. John Doe"
+                          required
+                        />
                       </div>
-                      <input
-                        type="text"
-                        name="name"
-                        value={formData.name}
-                        onChange={handleChange}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                        placeholder="Dr. John Doe"
-                        required
-                      />
                     </div>
-                  </div>
+
+                    <div className="space-y-2">
+                      <label className="block text-gray-700 text-sm font-semibold">
+                        Speciality
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                          </svg>
+                        </div>
+                        <input
+                          type="text"
+                          name="speciality"
+                          value={formData.speciality}
+                          onChange={handleChange}
+                          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                          placeholder="Cardiologist, Neurologist, etc."
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="block text-gray-700 text-sm font-semibold">
+                        City
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                        </div>
+                        <input
+                          type="text"
+                          name="city"
+                          value={formData.city}
+                          onChange={handleChange}
+                          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                          placeholder="Mumbai, Delhi, etc."
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="block text-gray-700 text-sm font-semibold">
+                        Hospital
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                          </svg>
+                        </div>
+                        <input
+                          type="text"
+                          value={hospitalSearch}
+                          onClick={() => setShowHospitalDropdown(!showHospitalDropdown)}
+                          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 cursor-pointer"
+                          placeholder="Select a hospital"
+                          readOnly
+                          required
+                        />
+                        {showHospitalDropdown && (
+                          <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg">
+                            <div className="p-2 border-b">
+                              <input
+                                type="text"
+                                placeholder="Search hospitals..."
+                                value={hospitalSearch}
+                                onChange={(e) => setHospitalSearch(e.target.value)}
+                                className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            </div>
+                            <div className="max-h-60 overflow-y-auto">
+                              {hospitals
+                                .filter(hospital => 
+                                  hospital.name.toLowerCase().includes(hospitalSearch.toLowerCase())
+                                )
+                                .map((hospital) => (
+                                  <div
+                                    key={hospital._id}
+                                    onClick={() => {
+                                      setFormData({ ...formData, hospital: hospital._id });
+                                      setHospitalSearch(hospital.name);
+                                      setShowHospitalDropdown(false);
+                                    }}
+                                    className="p-3 hover:bg-blue-50 cursor-pointer"
+                                  >
+                                    <div className="font-medium">{hospital.name}</div>
+                                    <div className="text-sm text-gray-600">{hospital.city}, {hospital.address}</div>
+                                    <div className="text-xs text-gray-500">Contact: {hospital.contactNumber}</div>
+                                  </div>
+                                ))}
+                              {hospitals.filter(hospital => 
+                                hospital.name.toLowerCase().includes(hospitalSearch.toLowerCase())
+                              ).length === 0 && (
+                                <div className="p-3 text-center text-gray-500">
+                                  No hospitals found
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="block text-gray-700 text-sm font-semibold">
+                        Experience (Years)
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        </div>
+                        <input
+                          type="number"
+                          name="experience"
+                          value={formData.experience}
+                          onChange={handleChange}
+                          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                          placeholder="Years of experience"
+                          min="0"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="block text-gray-700 text-sm font-semibold">
+                        Consultation Fee (₹)
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                          </svg>
+                        </div>
+                        <input
+                          type="number"
+                          name="consultationFee"
+                          value={formData.consultationFee}
+                          onChange={handleChange}
+                          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                          placeholder="Consultation fee in rupees"
+                          min="0"
+                          required
+                        />
+                      </div>
+                    </div>
+                  </>
                 )}
 
                 <div className="space-y-2">
@@ -217,7 +403,16 @@ const LoginDoctor = () => {
                     onClick={() => {
                       setIsSignup(!isSignup);
                       setError('');
-                      setFormData({ name: '', email: '', password: '' });
+                      setFormData({
+                        name: '',
+                        email: '',
+                        password: '',
+                        speciality: '',
+                        city: '',
+                        hospital: '',
+                        experience: 0,
+                        consultationFee: 0,
+                      });
                     }}
                     className="text-blue-600 hover:text-blue-800 font-medium transition-colors"
                   >

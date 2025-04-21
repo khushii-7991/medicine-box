@@ -457,6 +457,29 @@ const Doctor = () => {
                                 </a>
                             </div>
                         </div>
+
+                        {/* Add Hospital Card */}
+                        <div className="bg-white rounded-xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl hover:translate-y-[-4px] group relative">
+                            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-purple-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                            <div className="h-2 bg-gradient-to-r from-purple-500 to-purple-600"></div>
+                            <div className="p-6 relative z-10">
+                                <div className="flex flex-col items-center mb-6">
+                                    <div className="p-4 rounded-full bg-purple-100 mb-4 group-hover:bg-purple-200 transition-colors duration-300 group-hover:scale-110 transform">
+                                        <FiPlusCircle className="h-8 w-8 text-purple-600" />
+                                    </div>
+                                    <h3 className="text-lg font-semibold text-gray-900 text-center">Add Hospital</h3>
+                                </div>
+                                <p className="text-gray-600 mb-6 text-sm text-center">Register new hospitals to the system for doctors to select during registration.</p>
+                                <a href="/add-hospital" className="block w-full">
+                                    <button className="w-full bg-gradient-to-r from-purple-500 to-purple-600 text-white py-2.5 px-4 rounded-lg hover:shadow-md transition-all duration-300 flex items-center justify-center gap-2 group-hover:from-purple-600 group-hover:to-purple-700">
+                                        <span>Add New</span>
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 group-hover:translate-x-1 transition-transform duration-200" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
+                                        </svg>
+                                    </button>
+                                </a>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 

@@ -98,4 +98,51 @@ router.get('/', async (req, res) => {
     }
 });
 
+// GET doctors by search (speciality and/or city)
+router.get('/search', async (req, res) => {
+    try {
+        const { speciality, city } = req.query;
+        const query = {};
+        
+        // Use case-insensitive regex matching for more flexible searching
+        if (speciality) query.speciality = new RegExp(speciality, 'i');
+        if (city) query.city = new RegExp(city, 'i');
+        
+        console.log('Doctor search query:', query);
+        
+        const doctors = await Doctor.find(query)
+            .select('-password')
+            .populate('hospital');
+        
+        console.log(`Found ${doctors.length} doctors matching the criteria`);
+        console.log(doctors);
+            
+        res.json(doctors);
+    } catch (err) {
+        console.error('Error searching doctors:', err);
+        res.status(500).json({ message: 'Error searching doctors' });
+    }
+});
+
+// GET doctor categories
+router.get('/categories', async (req, res) => {
+    try {
+        // Get unique specialities from doctors collection
+        const specialities = await Doctor.distinct('speciality');
+        
+        // Format them as categories
+        const categories = specialities.map((speciality, index) => ({
+            id: index + 1,
+            name: speciality,
+            description: `${speciality} specialist`,
+            group: 'Available Specialities'
+        }));
+        
+        res.json(categories);
+    } catch (err) {
+        console.error('Error fetching doctor categories:', err);
+        res.status(500).json({ message: 'Error fetching doctor categories' });
+    }
+});
+
 module.exports = router;
