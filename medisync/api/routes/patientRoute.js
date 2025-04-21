@@ -32,6 +32,10 @@ patientRouter.post('/login', async (req, res) => {
         const isMatch = await bcrypt.compare(password, patient.password);
         if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
 
+        // Update last login time
+        patient.lastLogin = new Date();
+        await patient.save();
+
         const token = jwt.sign({ id: patient._id, role: 'patient' }, 'your_jwt_secret', { expiresIn: '1h' });
 
         res.json({ token, user: { id: patient._id, name: patient.name, email: patient.email } });

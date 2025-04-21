@@ -8,33 +8,112 @@ const auth = require('../middleware/auth');
 // POST /appointment/create - Create a new appointment request
 router.post('/create', auth, async (req, res) => {
     try {
-        const { doctorId, date, time, isFlexibleTiming, reason } = req.body;
-        const patientId = req.user.id;
+        console.log('Appointment creation request body:', req.body);
+        console.log('User making request:', req.user);
+        
+        const { doctorId, patientId, date, time, isFlexibleTiming, reason } = req.body;
+        let finalDoctorId = doctorId;
+        let finalPatientId = patientId;
 
-        // Validate doctor exists
-        const doctor = await Doctor.findById(doctorId);
-        if (!doctor) {
-            return res.status(404).json({ message: 'Doctor not found' });
+        // Determine user role (doctor or patient)
+        const userRole = req.user.role || 'unknown';
+        console.log('User role:', userRole);
+        
+        // Check if request is from doctor or patient
+        if (userRole === 'doctor' || req.user.speciality) {
+            // Request is from doctor
+            console.log('Request is from doctor with ID:', req.user.id);
+            finalDoctorId = req.user.id;
+            
+            // Validate patient exists
+            if (!patientId) {
+                return res.status(400).json({ message: 'Patient ID is required when doctor creates appointment' });
+            }
+            
+            console.log('Validating patient ID:', patientId);
+            const patient = await Patient.findById(patientId);
+            if (!patient) {
+                return res.status(404).json({ message: `Patient with ID ${patientId} not found` });
+            }
+            console.log('Patient found:', patient.name);
+            finalPatientId = patientId;
+        } else {
+            // Request is from patient
+            console.log('Request is from patient with ID:', req.user.id);
+            finalPatientId = req.user.id;
+            
+            // Validate doctor exists
+            if (!doctorId) {
+                return res.status(400).json({ message: 'Doctor ID is required when patient creates appointment' });
+            }
+            
+            const doctor = await Doctor.findById(doctorId);
+            if (!doctor) {
+                return res.status(404).json({ message: 'Doctor not found' });
+            }
+            console.log('Doctor found:', doctor.name);
+            finalDoctorId = doctorId;
+        }
+
+        // Validate required fields
+        if (!date || !time || !reason) {
+            return res.status(400).json({ 
+                message: 'Missing required fields', 
+                required: ['date', 'time', 'reason'],
+                received: { date, time, reason }
+            });
         }
 
         // Create new appointment
         const newAppointment = new Appointment({
-            patient: patientId,
-            doctor: doctorId,
+            patient: finalPatientId,
+            doctor: finalDoctorId,
             date,
             time,
-            isFlexibleTiming,
+            isFlexibleTiming: isFlexibleTiming || false,
             reason,
             status: 'pending'
         });
 
+        console.log('Creating appointment:', newAppointment);
         await newAppointment.save();
+        
+        // Populate patient and doctor info before returning
+        const populatedAppointment = await Appointment.findById(newAppointment._id)
+            .populate('patient', 'name email age')
+            .populate('doctor', 'name speciality consultationFee');
+            
+        console.log('Appointment created successfully:', {
+            id: populatedAppointment._id,
+            patient: populatedAppointment.patient.name,
+            doctor: populatedAppointment.doctor.name,
+            date: populatedAppointment.date,
+            status: populatedAppointment.status
+        });
+        
         res.status(201).json({ 
             message: 'Appointment request created successfully',
-            appointment: newAppointment
+            appointment: populatedAppointment
         });
     } catch (err) {
         console.error('Error creating appointment:', err);
+        // Check for MongoDB validation errors
+        if (err.name === 'ValidationError') {
+            const validationErrors = {};
+            for (const field in err.errors) {
+                validationErrors[field] = err.errors[field].message;
+            }
+            return res.status(400).json({ 
+                message: 'Validation error', 
+                errors: validationErrors 
+            });
+        }
+        // Check for MongoDB cast errors (invalid ID format)
+        if (err.name === 'CastError') {
+            return res.status(400).json({ 
+                message: `Invalid ${err.path} format: ${err.value}` 
+            });
+        }
         res.status(500).json({ message: 'Server error', error: err.message });
     }
 });

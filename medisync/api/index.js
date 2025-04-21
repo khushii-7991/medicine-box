@@ -8,6 +8,7 @@ const scheduleRoutes = require('./routes/scheduleRoute');
 const hospitalRoutes = require('./routes/hospitalRoute');
 const hospitalSearchRoutes = require('./routes/hospitalSearchRoute');
 const appointmentRoutes = require('./routes/appointmentRoute');
+const dashboardRoutes = require('./routes/dashboardRoute');
 const path = require('path');
 
 const app = express();
@@ -30,7 +31,8 @@ app.get('/', (req, res) => {
             patients: '/patient',
             prescriptions: '/prescription',
             schedule: '/api/schedule',
-            appointments: '/appointment'
+            appointments: '/appointment',
+            dashboard: '/dashboard'
         }
     });
 });
@@ -43,6 +45,7 @@ app.use('/schedule', scheduleRoutes);
 app.use('/hospital', hospitalRoutes);
 app.use('/api/hospitals', hospitalSearchRoutes);
 app.use('/appointment', appointmentRoutes);
+app.use('/dashboard', dashboardRoutes);
 
 // Error handling middleware
 app.use((req, res, next) => {

@@ -15,69 +15,269 @@ const Doctor = () => {
     const navigate = useNavigate();
     const doctorData = JSON.parse(localStorage.getItem('doctorData') || '{}');
     
-    // Sample statistics data - in a real app, this would come from an API
     const [stats, setStats] = useState({
-        todayAppointments: 8,
-        totalPatients: 124,
-        pendingReports: 3,
-        completedAppointments: 456
+        todayAppointments: 0,
+        totalPatients: 0,
+        pendingReports: 0,
+        completedAppointments: 0
     });
     
-    // Sample recent activity - in a real app, this would come from an API
-    const [recentActivity, setRecentActivity] = useState([
-        {
-            id: 1,
-            type: 'appointment',
-            patient: 'John Doe',
-            action: 'Completed checkup',
-            time: '2 hours ago',
-            image: 'https://randomuser.me/api/portraits/men/32.jpg'
-        },
-        {
-            id: 2,
-            type: 'report',
-            patient: 'Jane Smith',
-            action: 'Added blood test report',
-            time: '4 hours ago',
-            image: 'https://randomuser.me/api/portraits/women/44.jpg'
-        },
-        {
-            id: 3,
-            type: 'prescription',
-            patient: 'Robert Johnson',
-            action: 'Created new prescription',
-            time: 'Yesterday',
-            image: 'https://randomuser.me/api/portraits/men/92.jpg'
-        }
+    // Initialize chart data with default values
+    const [patientDistribution, setPatientDistribution] = useState([
+        { name: 'New Patients', value: 0 },
+        { name: 'Regular Checkups', value: 0 },
+        { name: 'Follow-ups', value: 0 },
     ]);
     
-    // Sample chart data - in a real app, this would come from an API
     const [appointmentTrends, setAppointmentTrends] = useState([
-        { name: 'Mon', appointments: 4 },
-        { name: 'Tue', appointments: 6 },
-        { name: 'Wed', appointments: 8 },
-        { name: 'Thu', appointments: 5 },
-        { name: 'Fri', appointments: 9 },
-        { name: 'Sat', appointments: 3 },
-        { name: 'Sun', appointments: 2 },
+        { name: 'Mon', appointments: 0 },
+        { name: 'Tue', appointments: 0 },
+        { name: 'Wed', appointments: 0 },
+        { name: 'Thu', appointments: 0 },
+        { name: 'Fri', appointments: 0 },
+        { name: 'Sat', appointments: 0 },
+        { name: 'Sun', appointments: 0 },
     ]);
     
     const [patientDemographics, setPatientDemographics] = useState([
-        { name: '0-18', value: 15, fill: '#8884d8' },
-        { name: '19-35', value: 30, fill: '#83a6ed' },
-        { name: '36-50', value: 45, fill: '#8dd1e1' },
-        { name: '51-65', value: 25, fill: '#82ca9d' },
-        { name: '65+', value: 9, fill: '#ffc658' },
+        { name: 'Under 18', value: 0 },
+        { name: '18-30', value: 0 },
+        { name: '31-50', value: 0 },
+        { name: 'Over 50', value: 0 },
+    ]);
+    
+    const [consultationTypes, setConsultationTypes] = useState([
+        { name: 'General', value: 0 },
+        { name: 'Specialist', value: 0 },
+        { name: 'Emergency', value: 0 },
+        { name: 'Follow-ups', value: 0 },
     ]);
     
     const [patientConditions, setPatientConditions] = useState([
-        { name: 'Hypertension', count: 28 },
-        { name: 'Diabetes', count: 22 },
-        { name: 'Asthma', count: 16 },
-        { name: 'Arthritis', count: 12 },
-        { name: 'Heart Disease', count: 8 },
+        { name: 'Hypertension', count: 0 },
+        { name: 'Diabetes', count: 0 },
+        { name: 'Asthma', count: 0 },
+        { name: 'Arthritis', count: 0 },
+        { name: 'Heart Disease', count: 0 },
     ]);
     
+    const [onlinePatients, setOnlinePatients] = useState([]);
+
+    // Fetch statistics
+    useEffect(() => {
+        const fetchDashboardData = async () => {
+            try {
+                const response = await fetch('http://localhost:3000/dashboard/doctor', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('doctorToken')}`
+                    }
+                });
+                const data = await response.json();
+
+                // Update patient distribution
+                if (data.newPatients !== undefined) {
+                    setPatientDistribution([
+                        { name: 'New Patients', value: data.newPatients || 0 },
+                        { name: 'Regular Checkups', value: data.regularCheckups || 0 },
+                        { name: 'Follow-ups', value: data.followUps || 0 },
+                    ]);
+                }
+
+                // Update appointment trends
+                if (Array.isArray(data.weeklyAppointments) && data.weeklyAppointments.length > 0) {
+                    setAppointmentTrends(data.weeklyAppointments);
+                }
+
+                // Update patient demographics
+                if (Array.isArray(data.patientDemographics) && data.patientDemographics.length > 0) {
+                    setPatientDemographics(data.patientDemographics);
+                }
+
+                // Update consultation types
+                if (data.consultationTypes) {
+                    setConsultationTypes([
+                        { name: 'General', value: data.consultationTypes.general || 0 },
+                        { name: 'Specialist', value: data.consultationTypes.specialist || 0 },
+                        { name: 'Emergency', value: data.consultationTypes.emergency || 0 },
+                        { name: 'Follow-ups', value: data.consultationTypes.followUps || 0 },
+                    ]);
+                }
+
+                // Update online patients
+                if (Array.isArray(data.onlinePatients)) {
+                    setOnlinePatients(data.onlinePatients);
+                }
+                
+                // Set default patient conditions if not provided by API
+                setPatientConditions([
+                    { name: 'Hypertension', count: 28 },
+                    { name: 'Diabetes', count: 22 },
+                    { name: 'Asthma', count: 16 },
+                    { name: 'Arthritis', count: 12 },
+                    { name: 'Heart Disease', count: 8 },
+                ]);
+
+                // Update stats
+                const todayAppts = Array.isArray(data.weeklyAppointments) && data.weeklyAppointments.length > 0 ?
+                    data.weeklyAppointments[data.weeklyAppointments.length - 1].appointments : 0;
+                    
+                setStats(prev => ({
+                    ...prev,
+                    todayAppointments: todayAppts,
+                    totalPatients: (data.newPatients || 0) + (data.regularCheckups || 0),
+                    pendingReports: Array.isArray(data.onlinePatients) ? data.onlinePatients.length : 0,
+                    completedAppointments: data.consultationTypes?.completed || 0
+                }));
+            } catch (error) {
+                console.error('Error fetching dashboard data:', error);
+            }
+        };
+
+        fetchDashboardData();
+        const interval = setInterval(fetchDashboardData, 30000); // Refresh every 30 seconds
+        return () => clearInterval(interval);
+    }, []);
+
+    const [recentActivity, setRecentActivity] = useState([]);
+    const [showAddAppointment, setShowAddAppointment] = useState(false);
+    const [newAppointment, setNewAppointment] = useState({
+        patientId: '',
+        date: '',
+        time: '',
+        reason: '',
+        isFlexibleTiming: false
+    });
+
+    // Fetch recent appointments
+    useEffect(() => {
+        const fetchRecentAppointments = async () => {
+            try {
+                console.log('Fetching recent appointments...');
+                const response = await fetch('http://localhost:3000/appointment/doctor', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('doctorToken')}`
+                    }
+                });
+                const data = await response.json();
+                console.log('Appointments fetched:', data);
+                
+                if (Array.isArray(data) && data.length > 0) {
+                    // Convert appointments to activity format
+                    const activities = data.map(appointment => ({
+                        id: appointment._id,
+                        type: 'appointment',
+                        patient: appointment.patient?.name || 'Unknown Patient',
+                        action: `${appointment.status.toUpperCase()} - ${appointment.reason}`,
+                        time: new Date(appointment.createdAt || Date.now()).toLocaleString(),
+                        status: appointment.status,
+                        image: 'https://randomuser.me/api/portraits/men/32.jpg'
+                    }));
+                    
+                    console.log('Processed activities:', activities);
+                    setRecentActivity(activities);
+                } else {
+                    console.warn('No appointments found or invalid data format');
+                }
+            } catch (error) {
+                console.error('Error fetching appointments:', error);
+                // Don't clear existing activities on error
+            }
+        };
+
+        fetchRecentAppointments();
+        const interval = setInterval(fetchRecentAppointments, 30000); // Refresh every 30 seconds
+        return () => clearInterval(interval);
+    }, []);
+
+    // Handle new appointment creation
+    const handleAddAppointment = async (e) => {
+        e.preventDefault();
+        try {
+            console.log('Creating appointment with data:', newAppointment);
+            // Format date properly for API
+            const formattedDate = new Date(newAppointment.date).toISOString().split('T')[0];
+            
+            const response = await fetch('http://localhost:3000/appointment/create', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('doctorToken')}`
+                },
+                body: JSON.stringify({
+                    patientId: newAppointment.patientId,
+                    date: formattedDate,
+                    time: newAppointment.time,
+                    reason: newAppointment.reason,
+                    isFlexibleTiming: newAppointment.isFlexibleTiming
+                })
+            });
+            
+            console.log('Appointment creation response status:', response.status);
+
+            if (response.ok) {
+                const data = await response.json();
+                setShowAddAppointment(false);
+                setNewAppointment({
+                    patientId: '',
+                    date: '',
+                    time: '',
+                    reason: '',
+                    isFlexibleTiming: false
+                });
+
+                // Fetch updated appointments to refresh the list
+                const appointmentsResponse = await fetch('http://localhost:3000/appointment/doctor', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('doctorToken')}`
+                    }
+                });
+                const appointments = await appointmentsResponse.json();
+                
+                // Update stats
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
+                const todayAppts = appointments.filter(appt => {
+                    const apptDate = new Date(appt.date);
+                    apptDate.setHours(0, 0, 0, 0);
+                    return apptDate.getTime() === today.getTime();
+                }).length;
+
+                const uniquePatients = new Set(appointments.map(appt => appt.patient._id)).size;
+                const pending = appointments.filter(appt => appt.status === 'pending').length;
+                const completed = appointments.filter(appt => appt.status === 'completed').length;
+
+                setStats({
+                    todayAppointments: todayAppts,
+                    totalPatients: uniquePatients,
+                    pendingReports: pending,
+                    completedAppointments: completed
+                });
+
+                // Update recent activity with the new appointment
+                const activities = appointments.map(appointment => ({
+                    id: appointment._id,
+                    type: 'appointment',
+                    patient: appointment.patient.name,
+                    action: `${appointment.status.toUpperCase()} - ${appointment.reason}`,
+                    time: new Date(appointment.createdAt).toLocaleString(),
+                    status: appointment.status,
+                    image: 'https://randomuser.me/api/portraits/men/32.jpg'
+                }));
+
+                setRecentActivity(activities);
+            } else {
+                const errorData = await response.json();
+                console.error('Failed to create appointment:', errorData);
+                alert(`Failed to create appointment: ${errorData.message || 'Unknown error'}`);
+            }
+        } catch (error) {
+            console.error('Error creating appointment:', error);
+            alert('Error creating appointment');
+        }
+    };
+    
+    // Sample chart data - in a real app, this would come from an API
     const [healthMetrics, setHealthMetrics] = useState([
         {
             name: 'Jan',
@@ -123,6 +323,75 @@ const Doctor = () => {
         { name: 'Lab Tests', value: 78 },
         { name: 'Follow-ups', value: 65 },
     ]);
+
+    // Handle appointment status update
+    const handleStatusUpdate = async (appointmentId, newStatus) => {
+        try {
+            console.log(`Updating appointment ${appointmentId} to status: ${newStatus}`);
+            const response = await fetch(`http://localhost:3000/appointment/${appointmentId}/status`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('doctorToken')}`
+                },
+                body: JSON.stringify({
+                    status: newStatus
+                })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                console.log('Status update successful:', data);
+                
+                // Update the status in the UI immediately
+                setRecentActivity(prevActivities => 
+                    prevActivities.map(activity => 
+                        activity.id === appointmentId
+                            ? {
+                                ...activity,
+                                status: newStatus,
+                                action: `${newStatus.toUpperCase()} - ${activity.action.split(' - ')[1]}`
+                            }
+                            : activity
+                    )
+                );
+                
+                // Refresh appointments after status update
+                // We need to fetch appointments again to get the updated list
+                try {
+                    const appointmentsResponse = await fetch('http://localhost:3000/appointment/doctor', {
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('doctorToken')}`
+                        }
+                    });
+                    const appointments = await appointmentsResponse.json();
+                    
+                    if (Array.isArray(appointments)) {
+                        const activities = appointments.map(appointment => ({
+                            id: appointment._id,
+                            type: 'appointment',
+                            patient: appointment.patient?.name || 'Unknown Patient',
+                            action: `${appointment.status.toUpperCase()} - ${appointment.reason}`,
+                            time: new Date(appointment.createdAt || Date.now()).toLocaleString(),
+                            status: appointment.status,
+                            image: 'https://randomuser.me/api/portraits/men/32.jpg'
+                        }));
+                        
+                        setRecentActivity(activities);
+                    }
+                } catch (refreshError) {
+                    console.error('Error refreshing appointments:', refreshError);
+                }
+            } else {
+                const errorData = await response.json();
+                console.error('Failed to update appointment status:', errorData);
+                alert(`Failed to update appointment status: ${errorData.message || 'Unknown error'}`);
+            }
+        } catch (error) {
+            console.error('Error updating appointment status:', error);
+            alert('Error updating appointment status');
+        }
+    };
 
     const handleLogout = () => {
         localStorage.removeItem('doctorToken');
@@ -275,9 +544,12 @@ const Doctor = () => {
                         <div className="bg-white shadow-lg rounded-lg border border-gray-100 overflow-hidden">
                             <div className="p-4 border-b border-gray-200 flex justify-between items-center">
                                 <h3 className="text-lg font-medium text-gray-900">Recent Activity</h3>
-                                <a href="#" className="text-sm font-medium text-blue-600 hover:text-blue-500">
-                                    View all
-                                </a>
+                                <button
+                                    onClick={() => setShowAddAppointment(true)}
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                >
+                                    Add Appointment
+                                </button>
                             </div>
                             <div className="divide-y divide-gray-200">
                                 {recentActivity.map((activity) => (
@@ -294,14 +566,113 @@ const Doctor = () => {
                                                     {activity.action}
                                                 </p>
                                             </div>
-                                            <div className="text-sm text-gray-500">
-                                                {activity.time}
+                                            <div className="flex flex-col items-end">
+                                                <span className="text-sm text-gray-500">
+                                                    {activity.time}
+                                                </span>
+                                                <div className="flex items-center space-x-2">
+                                                    {activity.status === 'pending' && (
+                                                        <div className="flex space-x-1">
+                                                            <button
+                                                                onClick={() => handleStatusUpdate(activity.id, 'confirmed')}
+                                                                className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full hover:bg-green-200"
+                                                            >
+                                                                Confirm
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleStatusUpdate(activity.id, 'cancelled')}
+                                                                className="text-xs px-2 py-1 bg-red-100 text-red-800 rounded-full hover:bg-red-200"
+                                                            >
+                                                                Reject
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                    <span className={`text-xs px-2 py-1 rounded-full ${activity.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : activity.status === 'confirmed' ? 'bg-green-100 text-green-800' : activity.status === 'cancelled' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'}`}>
+                                                        {activity.status}
+                                                    </span>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 ))}
                             </div>
                         </div>
+
+                        {/* Add Appointment Modal */}
+                        {showAddAppointment && (
+                            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                                <div className="bg-white rounded-xl p-6 w-full max-w-md">
+                                    <h3 className="text-xl font-semibold mb-4">Add New Appointment</h3>
+                                    <form onSubmit={handleAddAppointment}>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700">Patient ID</label>
+                                                <input
+                                                    type="text"
+                                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                                    value={newAppointment.patientId}
+                                                    onChange={(e) => setNewAppointment({...newAppointment, patientId: e.target.value})}
+                                                    required
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700">Date</label>
+                                                <input
+                                                    type="date"
+                                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                                    value={newAppointment.date}
+                                                    onChange={(e) => setNewAppointment({...newAppointment, date: e.target.value})}
+                                                    required
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700">Time</label>
+                                                <input
+                                                    type="time"
+                                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                                    value={newAppointment.time}
+                                                    onChange={(e) => setNewAppointment({...newAppointment, time: e.target.value})}
+                                                    required
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700">Reason</label>
+                                                <textarea
+                                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                                    value={newAppointment.reason}
+                                                    onChange={(e) => setNewAppointment({...newAppointment, reason: e.target.value})}
+                                                    required
+                                                />
+                                            </div>
+                                            <div className="flex items-center">
+                                                <input
+                                                    type="checkbox"
+                                                    className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                                    checked={newAppointment.isFlexibleTiming}
+                                                    onChange={(e) => setNewAppointment({...newAppointment, isFlexibleTiming: e.target.checked})}
+                                                />
+                                                <label className="ml-2 block text-sm text-gray-900">Flexible Timing</label>
+                                            </div>
+                                        </div>
+                                        <div className="mt-6 flex justify-end space-x-3">
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowAddAppointment(false)}
+                                                className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button
+                                                type="submit"
+                                                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+                                            >
+                                                Add Appointment
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        )}
                     </div>
                     
                     {/* Quick actions */}
