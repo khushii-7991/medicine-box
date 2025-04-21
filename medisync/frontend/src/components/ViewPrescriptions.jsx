@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { FaPlus } from 'react-icons/fa'
+import { FaPlus, FaPills, FaCalendarAlt, FaClock, FaInfoCircle, FaNotesMedical } from 'react-icons/fa'
+import { useNavigate } from 'react-router-dom'
+import DoctorPrescriptions from './DoctorPrescriptions'
 
 const ViewPrescriptions = () => {
     const [userName, setUserName] = useState('');
@@ -27,12 +29,20 @@ const ViewPrescriptions = () => {
     const [prescriptionResponses, setPrescriptionResponses] = useState([]);
     const [addedMedicinesFromResponses, setAddedMedicinesFromResponses] = useState([]);
 
+    const navigate = useNavigate();
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+    const [activePrescriptions, setActivePrescriptions] = useState([]);
+
     useEffect(() => {
         // Get user data from localStorage
         const patientData = JSON.parse(localStorage.getItem('patientData') || '{}');
         setUserName(patientData.name || 'User');
 
-        // Load prescriptions from localStorage if available
+        // Fetch real prescriptions from the API
+        fetchActivePrescriptions();
+
+        // Keep the existing mock data for other features that haven't been connected to real API yet
         const storedPrescriptions = JSON.parse(localStorage.getItem('prescriptions') || '[]');
         if (storedPrescriptions.length > 0) {
             setPrescriptions(storedPrescriptions);
@@ -73,6 +83,82 @@ const ViewPrescriptions = () => {
             ]);
         }
     }, []);
+
+    // Function to fetch active prescriptions for the current patient
+    const fetchActivePrescriptions = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            
+            // Get patient token from localStorage
+            const token = localStorage.getItem('patientToken');
+            if (!token) {
+                console.error('No patient token found in localStorage');
+                navigate('/login/patient');
+                return;
+            }
+            
+            // Get patient ID from localStorage
+            const patientData = JSON.parse(localStorage.getItem('patientData') || '{}');
+            const patientId = patientData._id || patientData.id;
+            
+            if (!patientId) {
+                console.error('No patient ID found');
+                return;
+            }
+            
+            console.log('Fetching prescriptions for patient ID:', patientId);
+            
+            // Fetch active prescriptions for this patient
+            const response = await fetch(`/prescription/patient/${patientId}/active`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            
+            console.log('Prescription response status:', response.status);
+            
+            if (!response.ok) {
+                if (response.status === 401) {
+                    console.error('Unauthorized access. Redirecting to login.');
+                    localStorage.removeItem('patientToken');
+                    navigate('/login/patient');
+                    return;
+                }
+                
+                const errorText = await response.text();
+                console.error('Error response:', errorText);
+                throw new Error(`API error: ${response.status} ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            console.log('Fetched prescriptions:', data);
+            
+            if (Array.isArray(data) && data.length > 0) {
+                console.log('Found', data.length, 'prescriptions');
+                // Log the first prescription for debugging
+                if (data[0]) {
+                    console.log('Sample prescription:', {
+                        id: data[0]._id,
+                        doctorId: data[0].doctorId,
+                        medicines: data[0].medicines,
+                        duration: data[0].duration,
+                        createdAt: data[0].createdAt
+                    });
+                }
+            } else {
+                console.log('No prescriptions found or invalid data format');
+            }
+            
+            setActivePrescriptions(data);
+            
+        } catch (err) {
+            console.error('Error fetching prescriptions:', err);
+            setError('Failed to load prescriptions. Please try again later.');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     // Mock medicine database - replace with your actual API
     const medicineDatabase = {
@@ -395,6 +481,11 @@ const ViewPrescriptions = () => {
     return (
         <div className="max-w-7xl mx-auto py-10 px-5">
             <div className="grid grid-cols-1 gap-8">
+                {/* Doctor Prescribed Medications */}
+                <div>
+                    <DoctorPrescriptions />
+                </div>
+                
                 {/* Existing Prescriptions Table */}
                 <div>
                     <div className="flex justify-between items-center mb-6">
@@ -430,7 +521,7 @@ const ViewPrescriptions = () => {
                                                 title="Delete prescription"
                                             >
                                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                                    <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                                    <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
                                                 </svg>
                                             </button>
                                         </td>
