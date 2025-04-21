@@ -38,9 +38,10 @@ const DoctorPrescriptions = () => {
             console.log('Fetching prescriptions for patient ID:', patientId);
             
             // Fetch active prescriptions for this patient
-            const response = await fetch(`/prescription/patient/${patientId}/active`, {
+            const response = await fetch(`http://localhost:3000/prescription/patient/${patientId}/active`, {
                 headers: {
-                    'Authorization': `Bearer ${token}`
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
                 }
             });
             

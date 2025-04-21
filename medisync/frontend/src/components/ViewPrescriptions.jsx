@@ -109,54 +109,74 @@ const ViewPrescriptions = () => {
             
             console.log('Fetching prescriptions for patient ID:', patientId);
             
-            // Fetch active prescriptions for this patient
-            const response = await fetch(`/prescription/patient/${patientId}/active`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
+            // Fetch active prescriptions for this patient using XMLHttpRequest for better compatibility
+            const xhr = new XMLHttpRequest();
+            xhr.open('GET', `http://localhost:3000/prescription/patient/${patientId}/active`, true);
+            xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+            xhr.setRequestHeader('Content-Type', 'application/json');
             
-            console.log('Prescription response status:', response.status);
-            
-            if (!response.ok) {
-                if (response.status === 401) {
+            xhr.onload = function() {
+                setLoading(false);
+                
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    try {
+                        const data = JSON.parse(xhr.responseText);
+                        console.log('Fetched prescriptions:', data);
+                        
+                        if (Array.isArray(data)) {
+                            console.log('Found', data.length, 'prescriptions');
+                            if (data.length > 0 && data[0]) {
+                                console.log('Sample prescription:', {
+                                    id: data[0]._id,
+                                    doctorId: data[0].doctorId,
+                                    medicines: data[0].medicines,
+                                    duration: data[0].duration,
+                                    createdAt: data[0].createdAt
+                                });
+                            } else {
+                                console.log('No prescriptions found');
+                            }
+                            
+                            // Successfully set the prescriptions and clear any errors
+                            setActivePrescriptions(data);
+                            setError(null);
+                        } else {
+                            console.error('Invalid data format, expected array');
+                            setActivePrescriptions([]);
+                        }
+                    } catch (parseError) {
+                        console.error('Error parsing JSON response:', parseError);
+                        setError('Error parsing prescription data');
+                        setActivePrescriptions([]);
+                    }
+                } else if (xhr.status === 401) {
                     console.error('Unauthorized access. Redirecting to login.');
                     localStorage.removeItem('patientToken');
                     navigate('/login/patient');
-                    return;
+                } else {
+                    console.error('Error response:', xhr.status, xhr.statusText, xhr.responseText);
+                    setError('Failed to load prescriptions. Please try again later.');
+                    setActivePrescriptions([]);
                 }
-                
-                const errorText = await response.text();
-                console.error('Error response:', errorText);
-                throw new Error(`API error: ${response.status} ${response.statusText}`);
-            }
+            };
             
-            const data = await response.json();
-            console.log('Fetched prescriptions:', data);
+            xhr.onerror = function() {
+                console.error('Network error occurred');
+                setLoading(false);
+                setError('Network error. Please check your connection and try again.');
+                setActivePrescriptions([]);
+            };
             
-            if (Array.isArray(data) && data.length > 0) {
-                console.log('Found', data.length, 'prescriptions');
-                // Log the first prescription for debugging
-                if (data[0]) {
-                    console.log('Sample prescription:', {
-                        id: data[0]._id,
-                        doctorId: data[0].doctorId,
-                        medicines: data[0].medicines,
-                        duration: data[0].duration,
-                        createdAt: data[0].createdAt
-                    });
-                }
-            } else {
-                console.log('No prescriptions found or invalid data format');
-            }
+            xhr.send();
             
-            setActivePrescriptions(data);
+            // Return early since we're using callbacks
+            return;
             
         } catch (err) {
-            console.error('Error fetching prescriptions:', err);
-            setError('Failed to load prescriptions. Please try again later.');
-        } finally {
+            console.error('Error in fetchActivePrescriptions:', err);
             setLoading(false);
+            setError('Failed to load prescriptions. Please try again later.');
+            setActivePrescriptions([]);
         }
     };
 
@@ -484,6 +504,64 @@ const ViewPrescriptions = () => {
                 {/* Doctor Prescribed Medications */}
                 <div>
                     <DoctorPrescriptions />
+                </div>
+                
+                {/* Active Prescriptions from Backend */}
+                <div>
+                    <h2 className="text-3xl font-bold text-green-800 mb-6">Your Active Prescriptions</h2>
+                    
+                    {loading ? (
+                        <div className="flex justify-center items-center py-10">
+                            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-green-800"></div>
+                        </div>
+                    ) : error ? (
+                        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-6">
+                            <p>{error}</p>
+                            <button 
+                                onClick={fetchActivePrescriptions}
+                                className="mt-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
+                            >
+                                Try Again
+                            </button>
+                        </div>
+                    ) : activePrescriptions.length > 0 ? (
+                        <div className="shadow-xl rounded-2xl overflow-x-auto mb-8">
+                            <table className="w-full bg-white border-collapse">
+                                <thead className="bg-green-900 text-white">
+                                    <tr>
+                                        <th className="py-3 px-4 text-left">Doctor</th>
+                                        <th className="py-3 px-4 text-left">Medicine</th>
+                                        <th className="py-3 px-4 text-left">Dosage</th>
+                                        <th className="py-3 px-4 text-left">Timing</th>
+                                        <th className="py-3 px-4 text-left">When to Take</th>
+                                        <th className="py-3 px-4 text-left">Duration</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {activePrescriptions.flatMap((prescription, prescIndex) => {
+                                        return prescription.medicines.map((medicine, medIndex) => (
+                                            <tr key={`${prescIndex}-${medIndex}`} className="border-t">
+                                                <td className="py-3 px-4">
+                                                    {prescription.doctorId?.name || 'Doctor'}
+                                                </td>
+                                                <td className="py-3 px-4">{medicine.name}</td>
+                                                <td className="py-3 px-4">{medicine.dosage}</td>
+                                                <td className="py-3 px-4">{medicine.timings.join(', ')}</td>
+                                                <td className="py-3 px-4">
+                                                    {medicine.whenToTake === 'before_meal' ? 'Before Meal' : 'After Meal'}
+                                                </td>
+                                                <td className="py-3 px-4">{prescription.duration} days</td>
+                                            </tr>
+                                        ));
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : (
+                        <div className="bg-white p-6 rounded-2xl shadow-xl mb-8 text-center">
+                            <p className="text-gray-500">No active prescriptions found</p>
+                        </div>
+                    )}
                 </div>
                 
                 {/* Existing Prescriptions Table */}

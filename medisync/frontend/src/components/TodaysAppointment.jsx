@@ -93,6 +93,9 @@ const TodaysAppointment = () => {
                 return;
             }
             
+            // Log token for debugging
+            console.log('Using doctor token from localStorage:', token.substring(0, 10) + '...');
+            
             // Get patient ID from selected appointment
             const patientId = selectedAppointment.patient.id || selectedAppointment.patient._id;
             console.log('Adding prescription for patient ID:', patientId);
@@ -116,7 +119,7 @@ const TodaysAppointment = () => {
                 duration: prescription.duration
             });
             
-            const response = await fetch('/prescription/create', {
+            const response = await fetch('http://localhost:3000/prescription/create', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -174,7 +177,10 @@ const TodaysAppointment = () => {
                 return;
             }
             
-            const response = await fetch(`/appointment/${appointmentId}`, {
+            // Log token for debugging
+            console.log('Using doctor token from localStorage:', token.substring(0, 10) + '...');
+            
+            const response = await fetch(`http://localhost:3000/appointment/${appointmentId}`, {
                 method: 'DELETE',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -232,10 +238,13 @@ const TodaysAppointment = () => {
                     return;
                 }
                 
-                const response = await fetch('/appointment/today-tomorrow', {
+                // Log token for debugging
+                console.log('Using doctor token from localStorage:', token.substring(0, 10) + '...');
+                
+                const response = await fetch('http://localhost:3000/appointment/today-tomorrow', {
                     headers: {
                         'Authorization': `Bearer ${token}`,
-                        'Accept': 'application/json'
+                        'Content-Type': 'application/json'
                     }
                 });
                 

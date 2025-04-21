@@ -271,6 +271,39 @@ router.put('/:id/cancel', auth, async (req, res) => {
     }
 });
 
+// GET /appointment/today-tomorrow - Get appointments for today and tomorrow for a doctor
+router.get('/today-tomorrow', auth, async (req, res) => {
+    try {
+        const doctorId = req.user.id;
+        
+        // Get today's date at the start of the day
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        // Get tomorrow's date at the end of the day
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(23, 59, 59, 999);
+        
+        console.log(`Fetching appointments for doctor ${doctorId} between ${today.toISOString()} and ${tomorrow.toISOString()}`);
+        
+        // Find appointments for today and tomorrow
+        const appointments = await Appointment.find({
+            doctor: doctorId,
+            date: { $gte: today, $lte: tomorrow }
+        })
+        .populate('patient', 'name email age')
+        .sort({ date: 1, time: 1 });
+        
+        console.log(`Found ${appointments.length} appointments for today and tomorrow`);
+        
+        res.json(appointments);
+    } catch (err) {
+        console.error('Error fetching today\'s and tomorrow\'s appointments:', err);
+        res.status(500).json({ message: 'Error fetching appointments', error: err.message });
+    }
+});
+
 // GET /appointment/:id - Get appointment details
 router.get('/:id', auth, async (req, res) => {
     try {
@@ -294,6 +327,36 @@ router.get('/:id', auth, async (req, res) => {
         res.json(appointment);
     } catch (err) {
         console.error('Error fetching appointment details:', err);
+        res.status(500).json({ message: 'Server error', error: err.message });
+    }
+});
+
+// DELETE /appointment/:id - Delete an appointment (for doctors)
+router.delete('/:id', auth, async (req, res) => {
+    try {
+        const appointmentId = req.params.id;
+        const doctorId = req.user.id;
+
+        // Find the appointment and check if it belongs to this doctor
+        const appointment = await Appointment.findById(appointmentId);
+        
+        if (!appointment) {
+            return res.status(404).json({ message: 'Appointment not found' });
+        }
+        
+        if (appointment.doctor.toString() !== doctorId) {
+            return res.status(403).json({ message: 'Not authorized to delete this appointment' });
+        }
+
+        // Delete the appointment
+        await Appointment.findByIdAndDelete(appointmentId);
+        
+        res.json({ 
+            message: 'Appointment deleted successfully',
+            appointmentId
+        });
+    } catch (err) {
+        console.error('Error deleting appointment:', err);
         res.status(500).json({ message: 'Server error', error: err.message });
     }
 });

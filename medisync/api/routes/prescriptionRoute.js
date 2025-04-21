@@ -89,23 +89,61 @@ router.get('/patient/:patientId', auth, async (req, res) => {
 // Get all active prescriptions for a patient (not expired based on duration)
 router.get('/patient/:patientId/active', auth, async (req, res) => {
     try {
+        console.log(`Fetching active prescriptions for patient ID: ${req.params.patientId}`);
+        console.log(`User ID from token: ${req.user.id}`);
+        
+        // Get all prescriptions for this patient
         const prescriptions = await Prescription.find({
-            patientId: req.params.patientId,
-            createdAt: {
-                $gte: new Date(Date.now() - 24*60*60*1000) // Within last 24 hours
-            }
+            patientId: req.params.patientId
         }).populate('doctorId', 'name');
-
-        // Filter prescriptions based on duration
+        
+        console.log(`Found ${prescriptions.length} total prescriptions for patient`);
+        
+        // If no prescriptions found, return empty array instead of error
+        if (!prescriptions || prescriptions.length === 0) {
+            console.log('No prescriptions found for this patient');
+            return res.json([]);
+        }
+        
+        // Get current date
+        const currentDate = new Date();
+        console.log(`Current date for comparison: ${currentDate.toISOString()}`);
+        
+        // Filter prescriptions based on duration (similar to how we fixed the schedule issue)
         const activePrescriptions = prescriptions.filter(prescription => {
-            const endDate = new Date(prescription.createdAt);
-            endDate.setDate(endDate.getDate() + prescription.duration);
-            return endDate >= new Date();
+            try {
+                // Get the prescription creation date
+                const prescriptionDate = new Date(prescription.createdAt);
+                console.log(`Prescription ${prescription._id} created at: ${prescriptionDate.toISOString()}`);
+                
+                // Calculate end date by adding duration in days
+                const endDate = new Date(prescriptionDate);
+                endDate.setDate(prescriptionDate.getDate() + prescription.duration);
+                console.log(`Prescription ${prescription._id} ends at: ${endDate.toISOString()}`);
+                
+                // Compare year, month, and day components individually instead of timestamps
+                const isActive = (
+                    endDate.getFullYear() > currentDate.getFullYear() ||
+                    (endDate.getFullYear() === currentDate.getFullYear() &&
+                        endDate.getMonth() > currentDate.getMonth()) ||
+                    (endDate.getFullYear() === currentDate.getFullYear() &&
+                        endDate.getMonth() === currentDate.getMonth() &&
+                        endDate.getDate() >= currentDate.getDate())
+                );
+                
+                console.log(`Prescription ${prescription._id} is active: ${isActive}`);
+                return isActive;
+            } catch (err) {
+                console.error(`Error processing prescription ${prescription._id}:`, err);
+                return false; // Skip this prescription if there's an error
+            }
         });
-
-        res.json(activePrescriptions);
+        
+        console.log(`Returning ${activePrescriptions.length} active prescriptions`);
+        return res.status(200).json(activePrescriptions);
     } catch (err) {
-        res.status(500).json({ message: "Error fetching active prescriptions" });
+        console.error('Error fetching active prescriptions:', err);
+        return res.status(500).json({ message: "Error fetching active prescriptions", error: err.message });
     }
 });
 
