@@ -8,21 +8,37 @@ const auth = require('../middleware/auth');
 // POST /appointment/create - Create a new appointment request
 router.post('/create', auth, async (req, res) => {
     try {
-        console.log('Appointment creation request body:', req.body);
-        console.log('User making request:', req.user);
+        console.log('User data from token:', req.user);
+        console.log('Request body:', req.body);
         
         const { doctorId, patientId, date, time, isFlexibleTiming, reason } = req.body;
         let finalDoctorId = doctorId;
         let finalPatientId = patientId;
 
-        // Determine user role (doctor or patient)
-        const userRole = req.user.role || 'unknown';
-        console.log('User role:', userRole);
-        
-        // Check if request is from doctor or patient
-        if (userRole === 'doctor' || req.user.speciality) {
-            // Request is from doctor
-            console.log('Request is from doctor with ID:', req.user.id);
+        // Check if the request explicitly states it's from a doctor
+        if (req.body.createdBy === 'doctor') {
+            console.log('Request explicitly marked as from doctor');
+            
+            // Use the doctor ID from the token
+            finalDoctorId = req.user.id;
+            console.log('Using doctor ID from token:', finalDoctorId);
+            
+            // Validate patient exists
+            if (!patientId) {
+                return res.status(400).json({ message: 'Patient ID is required when doctor creates appointment' });
+            }
+            
+            console.log('Validating patient ID:', patientId);
+            const patient = await Patient.findById(patientId);
+            if (!patient) {
+                return res.status(404).json({ message: `Patient with ID ${patientId} not found` });
+            }
+            console.log('Patient found:', patient.name);
+            finalPatientId = patientId;
+            
+        // If doctorId is provided in the request and matches the user's ID, it's a doctor
+        } else if (doctorId && doctorId === req.user.id) {
+            console.log('Doctor ID in request matches user ID');
             finalDoctorId = req.user.id;
             
             // Validate patient exists
@@ -37,22 +53,60 @@ router.post('/create', auth, async (req, res) => {
             }
             console.log('Patient found:', patient.name);
             finalPatientId = patientId;
+            
+        // Check if user is a doctor by role or by checking the database
         } else {
-            // Request is from patient
-            console.log('Request is from patient with ID:', req.user.id);
-            finalPatientId = req.user.id;
+            let isDoctor = req.user.role === 'doctor';
             
-            // Validate doctor exists
-            if (!doctorId) {
-                return res.status(400).json({ message: 'Doctor ID is required when patient creates appointment' });
+            if (!isDoctor) {
+                try {
+                    // Check if user exists in the Doctor collection
+                    const doctorCheck = await Doctor.findById(req.user.id);
+                    if (doctorCheck) {
+                        console.log('User found in Doctor collection:', doctorCheck.name);
+                        isDoctor = true;
+                    }
+                } catch (error) {
+                    console.log('Error checking doctor:', error.message);
+                }
             }
             
-            const doctor = await Doctor.findById(doctorId);
-            if (!doctor) {
-                return res.status(404).json({ message: 'Doctor not found' });
+            console.log('Is user a doctor based on role/DB check?', isDoctor);
+            
+            if (isDoctor) {
+                // Request is from doctor
+                console.log('Request is from doctor with ID:', req.user.id);
+                finalDoctorId = req.user.id;
+                
+                // Validate patient exists
+                if (!patientId) {
+                    return res.status(400).json({ message: 'Patient ID is required when doctor creates appointment' });
+                }
+                
+                console.log('Validating patient ID:', patientId);
+                const patient = await Patient.findById(patientId);
+                if (!patient) {
+                    return res.status(404).json({ message: `Patient with ID ${patientId} not found` });
+                }
+                console.log('Patient found:', patient.name);
+                finalPatientId = patientId;
+            } else {
+                // Request is from patient
+                console.log('Request is from patient with ID:', req.user.id);
+                finalPatientId = req.user.id;
+                
+                // Validate doctor exists
+                if (!doctorId) {
+                    return res.status(400).json({ message: 'Doctor ID is required when patient creates appointment' });
+                }
+                
+                const doctor = await Doctor.findById(doctorId);
+                if (!doctor) {
+                    return res.status(404).json({ message: 'Doctor not found' });
+                }
+                console.log('Doctor found:', doctor.name);
+                finalDoctorId = doctorId;
             }
-            console.log('Doctor found:', doctor.name);
-            finalDoctorId = doctorId;
         }
 
         // Validate required fields

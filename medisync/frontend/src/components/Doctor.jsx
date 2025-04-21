@@ -14,6 +14,32 @@ import {
 const Doctor = () => {
     const navigate = useNavigate();
     const doctorData = JSON.parse(localStorage.getItem('doctorData') || '{}');
+    const [doctorInfo, setDoctorInfo] = useState(null);
+    
+    // Fetch doctor profile on component mount
+    useEffect(() => {
+        const fetchDoctorProfile = async () => {
+            try {
+                const response = await fetch('/api/doctor/profile', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('doctorToken')}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Doctor profile fetched:', data);
+                    setDoctorInfo(data);
+                } else {
+                    console.error('Failed to fetch doctor profile');
+                }
+            } catch (error) {
+                console.error('Error fetching doctor profile:', error);
+            }
+        };
+        
+        fetchDoctorProfile();
+    }, []);
     
     const [stats, setStats] = useState({
         todayAppointments: 0,
@@ -40,10 +66,10 @@ const Doctor = () => {
     ]);
     
     const [patientDemographics, setPatientDemographics] = useState([
-        { name: 'Under 18', value: 0 },
-        { name: '18-30', value: 0 },
-        { name: '31-50', value: 0 },
-        { name: 'Over 50', value: 0 },
+        { name: 'Under 18', value: 0, fill: '#FF6384', color: '#FF6384' },
+        { name: '18-30', value: 0, fill: '#36A2EB', color: '#36A2EB' },
+        { name: '31-50', value: 0, fill: '#FFCE56', color: '#FFCE56' },
+        { name: 'Over 50', value: 0, fill: '#4BC0C0', color: '#4BC0C0' },
     ]);
     
     const [consultationTypes, setConsultationTypes] = useState([
@@ -67,7 +93,7 @@ const Doctor = () => {
     useEffect(() => {
         const fetchDashboardData = async () => {
             try {
-                const response = await fetch('http://localhost:3000/dashboard/doctor', {
+                const response = await fetch('/api/dashboard/doctor', {
                     headers: {
                         'Authorization': `Bearer ${localStorage.getItem('doctorToken')}`
                     }
@@ -90,7 +116,22 @@ const Doctor = () => {
 
                 // Update patient demographics
                 if (Array.isArray(data.patientDemographics) && data.patientDemographics.length > 0) {
-                    setPatientDemographics(data.patientDemographics);
+                    // Map specific colors to specific age groups with primary colors for better visibility
+                    const coloredDemographics = data.patientDemographics.map(item => {
+                        let color;
+                        if (item.name === 'Under 18') color = '#FF0000'; // Bright Red
+                        else if (item.name === '18-30') color = '#0000FF'; // Bright Blue
+                        else if (item.name === '31-50') color = '#FFD700'; // Gold
+                        else if (item.name === 'Over 50') color = '#00FF00'; // Bright Green
+                        else color = '#9966FF'; // Fallback color
+                        
+                        return {
+                            ...item,
+                            fill: color,
+                            color: color
+                        };
+                    });
+                    setPatientDemographics(coloredDemographics);
                 }
 
                 // Update consultation types
@@ -142,11 +183,16 @@ const Doctor = () => {
     const [showAddAppointment, setShowAddAppointment] = useState(false);
     const [newAppointment, setNewAppointment] = useState({
         patientId: '',
+        patientName: '',
         date: '',
         time: '',
         reason: '',
         isFlexibleTiming: false
     });
+    
+    const [patients, setPatients] = useState([]);
+    const [filteredPatients, setFilteredPatients] = useState([]);
+    const [showPatientDropdown, setShowPatientDropdown] = useState(false);
 
     // Fetch recent appointments
     useEffect(() => {
@@ -197,7 +243,7 @@ const Doctor = () => {
             // Format date properly for API
             const formattedDate = new Date(newAppointment.date).toISOString().split('T')[0];
             
-            const response = await fetch('http://localhost:3000/appointment/create', {
+            const response = await fetch('/api/appointment/create', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -205,11 +251,12 @@ const Doctor = () => {
                 },
                 body: JSON.stringify({
                     patientId: newAppointment.patientId,
-                    doctorId: doctorData._id, // Explicitly include doctorId
+                    doctorId: doctorInfo?._id || localStorage.getItem('doctorId'), // Try multiple sources for doctorId
                     date: formattedDate,
                     time: newAppointment.time,
                     reason: newAppointment.reason,
-                    isFlexibleTiming: newAppointment.isFlexibleTiming
+                    isFlexibleTiming: newAppointment.isFlexibleTiming,
+                    createdBy: 'doctor' // Explicitly mark as created by doctor
                 })
             });
             
@@ -360,7 +407,7 @@ const Doctor = () => {
                 // Refresh appointments after status update
                 // We need to fetch appointments again to get the updated list
                 try {
-                    const appointmentsResponse = await fetch('http://localhost:3000/appointment/doctor', {
+                    const appointmentsResponse = await fetch('/api/appointment/doctor', {
                         headers: {
                             'Authorization': `Bearer ${localStorage.getItem('doctorToken')}`
                         }
@@ -607,14 +654,60 @@ const Doctor = () => {
                                     <form onSubmit={handleAddAppointment}>
                                         <div className="space-y-4">
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-700">Patient ID</label>
-                                                <input
-                                                    type="text"
-                                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                                                    value={newAppointment.patientId}
-                                                    onChange={(e) => setNewAppointment({...newAppointment, patientId: e.target.value})}
-                                                    required
-                                                />
+                                                <label className="block text-sm font-medium text-gray-700">Patient Name</label>
+                                                <div className="relative">
+                                                    <input
+                                                        type="text"
+                                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                                        value={newAppointment.patientName}
+                                                        onChange={(e) => {
+                                                            setNewAppointment({...newAppointment, patientName: e.target.value, patientId: ''});
+                                                            if (e.target.value.length > 1) {
+                                                                // Filter patients based on name
+                                                                fetch(`/api/patient/search?name=${e.target.value}`, {
+                                                                    headers: {
+                                                                        'Authorization': `Bearer ${localStorage.getItem('doctorToken')}`
+                                                                    }
+                                                                })
+                                                                .then(res => res.json())
+                                                                .then(data => {
+                                                                    if (Array.isArray(data)) {
+                                                                        setFilteredPatients(data);
+                                                                        setShowPatientDropdown(true);
+                                                                    }
+                                                                })
+                                                                .catch(err => console.error('Error searching patients:', err));
+                                                            } else {
+                                                                setShowPatientDropdown(false);
+                                                            }
+                                                        }}
+                                                        placeholder="Enter patient name"
+                                                        required
+                                                    />
+                                                    {showPatientDropdown && filteredPatients.length > 0 && (
+                                                        <div className="absolute z-10 w-full mt-1 bg-white shadow-lg rounded-md max-h-60 overflow-auto">
+                                                            {filteredPatients.map(patient => (
+                                                                <div 
+                                                                    key={patient._id}
+                                                                    className="p-2 hover:bg-gray-100 cursor-pointer"
+                                                                    onClick={() => {
+                                                                        setNewAppointment({
+                                                                            ...newAppointment,
+                                                                            patientId: patient._id,
+                                                                            patientName: patient.name
+                                                                        });
+                                                                        setShowPatientDropdown(false);
+                                                                    }}
+                                                                >
+                                                                    {patient.name} - {patient.email}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                {newAppointment.patientId && (
+                                                    <p className="text-xs text-green-600 mt-1">Patient selected: {newAppointment.patientName}</p>
+                                                )}
                                             </div>
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700">Date</label>
@@ -910,29 +1003,87 @@ const Doctor = () => {
                                             data={patientDemographics}
                                             cx="50%"
                                             cy="50%"
-                                            innerRadius={80}
+                                            innerRadius={60}
                                             outerRadius={120}
-                                            paddingAngle={2}
+                                            paddingAngle={5}
                                             dataKey="value"
-                                            labelLine={false}
-                                            label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                                            labelLine={true}
+                                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                                            animationDuration={1500}
+                                            animationBegin={300}
                                         >
-                                            {patientDemographics.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={entry.fill} />
-                                            ))}
+                                            {patientDemographics.map((entry, index) => {
+                                                // Fixed colors for each age group
+                                                const COLORS = {
+                                                    'Under 18': '#FF0000', // Bright Red
+                                                    '18-30': '#0000FF',   // Bright Blue
+                                                    '31-50': '#FFD700',   // Gold
+                                                    'Over 50': '#00FF00'  // Bright Green
+                                                };
+                                                
+                                                const color = COLORS[entry.name] || `#${Math.floor(Math.random()*16777215).toString(16)}`;
+                                                
+                                                return (
+                                                    <Cell 
+                                                        key={`cell-${index}`} 
+                                                        fill={color}
+                                                        stroke="#ffffff"
+                                                        strokeWidth={4}
+                                                    />
+                                                );
+                                            })}
                                         </Pie>
                                         <Tooltip 
-                                            formatter={(value) => [`${value} patients`, 'Count']}
+                                            formatter={(value, name) => [`${value} patients (${name})`, 'Count']}
                                             contentStyle={{ 
-                                                backgroundColor: 'rgba(255, 255, 255, 0.9)', 
-                                                borderRadius: '8px',
+                                                backgroundColor: 'rgba(255, 255, 255, 0.95)', 
+                                                borderRadius: '12px',
                                                 border: 'none',
-                                                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
-                                            }} 
+                                                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+                                                padding: '12px'
+                                            }}
+                                            itemStyle={{
+                                                fontWeight: 'bold'
+                                            }}
                                         />
-                                        <Legend />
+                                        <Legend 
+                                            layout="vertical" 
+                                            verticalAlign="middle" 
+                                            align="right"
+                                            iconType="square"
+                                            iconSize={15}
+                                            formatter={(value) => {
+                                                const item = patientDemographics.find(item => item.name === value);
+                                                return <span style={{ color: '#333', fontWeight: 'bold' }}>{value}: {item?.value || 0} patients</span>;
+                                            }}
+                                            wrapperStyle={{
+                                                paddingLeft: '20px',
+                                                fontWeight: 'bold',
+                                                fontSize: '14px'
+                                            }}
+                                        />
                                     </PieChart>
                                 </ResponsiveContainer>
+                            </div>
+                            
+                            {/* Color Legend Boxes */}
+                            <div className="mt-4 grid grid-cols-2 gap-2">
+                                <div className="flex items-center">
+                                    <div className="w-6 h-6 mr-2" style={{ backgroundColor: '#FF0000' }}></div>
+                                    <span className="text-sm font-medium">Under 18</span>
+                                </div>
+                                <div className="flex items-center">
+                                    <div className="w-6 h-6 mr-2" style={{ backgroundColor: '#0000FF' }}></div>
+                                    <span className="text-sm font-medium">18-30</span>
+                                </div>
+                                <div className="flex items-center">
+                                    <div className="w-6 h-6 mr-2" style={{ backgroundColor: '#FFD700' }}></div>
+                                    <span className="text-sm font-medium">31-50</span>
+                                </div>
+                                <div className="flex items-center">
+                                    <div className="w-6 h-6 mr-2" style={{ backgroundColor: '#00FF00' }}></div>
+                                    <span className="text-sm font-medium">Over 50</span>
+                                </div>
                             </div>
                         </div>
                     </div>

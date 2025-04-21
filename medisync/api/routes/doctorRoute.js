@@ -124,6 +124,24 @@ router.get('/search', async (req, res) => {
     }
 });
 
+// GET /doctor/profile - Get doctor profile information
+router.get('/profile', auth, async (req, res) => {
+    try {
+        const doctorId = req.user.id;
+        console.log('Fetching profile for doctor ID:', doctorId);
+        
+        const doctor = await Doctor.findById(doctorId).select('-password');
+        if (!doctor) {
+            return res.status(404).json({ message: 'Doctor not found' });
+        }
+        
+        res.json(doctor);
+    } catch (err) {
+        console.error('Error fetching doctor profile:', err);
+        res.status(500).json({ message: 'Server error', error: err.message });
+    }
+});
+
 // GET doctor categories
 router.get('/categories', async (req, res) => {
     try {
