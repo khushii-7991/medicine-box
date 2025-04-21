@@ -28,31 +28,33 @@ import Profile from './components/Profile';
 import { Toaster } from 'react-hot-toast';
 import MedicineTracking from './components/MedicineTracking';
 import MedicineInfo from './components/MedicineInfo';
+import { NotificationProvider } from './context/NotificationContext';
 
 function App() {
 
   return (
-    <BrowserRouter>
-      {/* Toast container for notifications */}
-      <Toaster 
-        position="top-right"
-        toastOptions={{
-          duration: 3000,
-          style: {
-            background: '#363636',
-            color: '#fff',
-          },
-          success: {
+    <NotificationProvider>
+      <BrowserRouter>
+        {/* Toast container for notifications */}
+        <Toaster 
+          position="top-right"
+          toastOptions={{
+            duration: 3000,
             style: {
-              background: '#22c55e',
+              background: '#363636',
+              color: '#fff',
             },
-          },
-          error: {
-            style: {
-              background: '#ef4444',
+            success: {
+              style: {
+                background: '#22c55e',
+              },
             },
-          },
-        }}
+            error: {
+              style: {
+                background: '#ef4444',
+              },
+            },
+          }}
       />
       
       <Routes>
@@ -221,6 +223,7 @@ function App() {
         } />
       </Routes>
     </BrowserRouter>
+    </NotificationProvider>
   )
 }
 

@@ -4,6 +4,7 @@ const Appointment = require('../models/Appointment');
 const Doctor = require('../models/Doctor');
 const Patient = require('../models/Patient');
 const auth = require('../middleware/auth');
+const { createAppointmentNotifications } = require('../controller/notificationController');
 
 // POST /appointment/create - Create a new appointment request
 router.post('/create', auth, async (req, res) => {
@@ -145,6 +146,23 @@ router.post('/create', auth, async (req, res) => {
             status: populatedAppointment.status
         });
         
+        // Create notifications for the appointment
+        try {
+            console.log('Creating appointment notifications with populated data:', {
+                id: populatedAppointment._id,
+                doctor: populatedAppointment.doctor._id,
+                patient: populatedAppointment.patient._id,
+                date: populatedAppointment.date,
+                time: populatedAppointment.time
+            });
+            
+            await createAppointmentNotifications(populatedAppointment, 'created');
+            console.log('Appointment notifications created successfully');
+        } catch (notificationErr) {
+            console.error('Error creating appointment notifications:', notificationErr);
+            // Continue even if notification creation fails
+        }
+        
         res.status(201).json({ 
             message: 'Appointment request created successfully',
             appointment: populatedAppointment
@@ -208,21 +226,32 @@ router.get('/patient', auth, async (req, res) => {
 router.put('/:id/status', auth, async (req, res) => {
     try {
         const { status, notes } = req.body;
-        const appointmentId = req.params.id;
-        const doctorId = req.user.id;
-
-        // Find the appointment and check if it belongs to this doctor
-        const appointment = await Appointment.findById(appointmentId);
+        
+        if (!status) {
+            return res.status(400).json({ message: 'Status is required' });
+        }
+        
+        // Validate status value
+        const validStatuses = ['pending', 'confirmed', 'declined', 'completed', 'canceled'];
+        if (!validStatuses.includes(status)) {
+            return res.status(400).json({ 
+                message: 'Invalid status value', 
+                validValues: validStatuses 
+            });
+        }
+        
+        const appointment = await Appointment.findById(req.params.id);
         
         if (!appointment) {
             return res.status(404).json({ message: 'Appointment not found' });
         }
         
-        if (appointment.doctor.toString() !== doctorId) {
+        // Only doctors can update appointment status
+        if (appointment.doctor.toString() !== req.user.id) {
             return res.status(403).json({ message: 'Not authorized to update this appointment' });
         }
-
-        // Update appointment status
+        
+        // Update appointment
         appointment.status = status;
         if (notes) {
             appointment.notes = notes;
@@ -230,13 +259,27 @@ router.put('/:id/status', auth, async (req, res) => {
         
         await appointment.save();
         
+        // Populate patient and doctor info before returning
+        const updatedAppointment = await Appointment.findById(appointment._id)
+            .populate('patient', 'name email age')
+            .populate('doctor', 'name speciality consultationFee');
+        
+        // Create notifications based on the new status
+        if (status === 'confirmed') {
+            await createAppointmentNotifications(updatedAppointment, 'confirmed');
+        } else if (status === 'declined') {
+            await createAppointmentNotifications(updatedAppointment, 'declined');
+        } else if (status === 'completed') {
+            await createAppointmentNotifications(updatedAppointment, 'completed');
+        }
+        
         res.json({ 
             message: 'Appointment status updated successfully',
-            appointment
+            appointment: updatedAppointment
         });
     } catch (err) {
         console.error('Error updating appointment status:', err);
-        res.status(500).json({ message: 'Server error', error: err.message });
+        res.status(500).json({ message: 'Error updating appointment status', error: err.message });
     }
 });
 

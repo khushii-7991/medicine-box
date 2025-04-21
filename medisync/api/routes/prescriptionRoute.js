@@ -3,6 +3,7 @@ const router = express.Router();
 const Prescription = require('../models/prescriptionModel');
 const auth = require('../middleware/auth');
 const { createSchedule } = require('../controller/scheduleController');
+const { createPrescriptionNotifications } = require('../controller/notificationController');
 
 // Create a new prescription
 router.post('/create', auth, async (req, res) => {
@@ -40,6 +41,15 @@ router.post('/create', auth, async (req, res) => {
         try {
             const schedule = await createSchedule(prescription._id);
             
+            // Create notifications for the patient about the new prescription
+            try {
+                await createPrescriptionNotifications(prescription);
+                console.log('Prescription notifications created successfully');
+            } catch (notificationErr) {
+                console.error('Error creating prescription notifications:', notificationErr);
+                // Continue even if notification creation fails
+            }
+            
             // Send success response with both prescription and schedule
             res.status(201).json({
                 message: "Prescription created successfully with schedule",
@@ -48,6 +58,14 @@ router.post('/create', auth, async (req, res) => {
             });
         } catch (scheduleErr) {
             console.error('Error creating schedule:', scheduleErr);
+            
+            // Try to create notifications even if schedule creation failed
+            try {
+                await createPrescriptionNotifications(prescription);
+                console.log('Prescription notifications created successfully');
+            } catch (notificationErr) {
+                console.error('Error creating prescription notifications:', notificationErr);
+            }
             
             // Still return success for prescription, but note schedule error
             res.status(201).json({
