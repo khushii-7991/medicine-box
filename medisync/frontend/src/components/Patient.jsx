@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
+import PropTypes from 'prop-types';
 import { 
     FiCalendar, FiClock, FiFileText, FiUpload, FiBell, 
     FiPhoneCall, FiActivity, FiPieChart, FiTrendingUp, FiUser, FiCheckCircle, FiAlertTriangle,
@@ -12,6 +13,14 @@ import {
     RadialBarChart, RadialBar, Cell
 } from 'recharts';
 import MedicineTracking from './MedicineTracking';
+
+// PropTypes for MedicineTracking
+MedicineTracking.propTypes = {
+    prescriptionId: PropTypes.string.isRequired,
+    medications: PropTypes.array.isRequired,
+    startDate: PropTypes.string.isRequired,
+    endDate: PropTypes.string.isRequired
+};
 
 const Patient = () => {
     const navigate = useNavigate();
@@ -196,7 +205,8 @@ const Patient = () => {
         id: 'default',
         name: 'Daily Medications',
         startDate: new Date().toISOString(),
-        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        medications: []
     });
 
     const [streakData, setStreakData] = useState({
@@ -213,9 +223,28 @@ const Patient = () => {
             { date: '2024-03-07', status: 'completed' },
             { date: '2024-03-08', status: 'missed' },
             { date: '2024-03-09', status: 'completed' },
-            { date: '2024-03-10', status: 'completed' },
+            { date: '2024-03-10', status: 'completed' }
         ]
     });
+
+    useEffect(() => {
+        const fetchPrescriptionData = async () => {
+            try {
+                const storedPatientData = JSON.parse(localStorage.getItem('patientData') || '{}');
+                if (storedPatientData.id) {
+                    // Replace with your actual API endpoint
+                    const response = await axios.get(`/api/prescriptions/${storedPatientData.id}/active`);
+                    if (response.data && response.data.length > 0) {
+                        setSelectedPrescription(response.data[0]);
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching prescription data:', error);
+            }
+        };
+
+        fetchPrescriptionData();
+    }, []);
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -493,7 +522,31 @@ const Patient = () => {
                                         </button>
                                     </div>
                                     {showTracking && (
-                                        <MedicineTracking prescriptionId={selectedPrescription.id} />
+                                        <div className="bg-white rounded-xl shadow-md p-6">
+                                            <div className="flex justify-between items-center mb-4">
+                                                <h2 className="text-xl font-bold text-gray-800 flex items-center">
+                                                    <FiCalendar className="mr-2 text-teal-600" /> Medication Calendar
+                                                </h2>
+                                                <button
+                                                    onClick={() => setShowTracking(!showTracking)}
+                                                    className="text-blue-600 hover:text-blue-800 flex items-center gap-2"
+                                                >
+                                                    {showTracking ? 'Hide Calendar' : 'Show Calendar'}
+                                                </button>
+                                            </div>
+                                            {selectedPrescription ? (
+                                                <MedicineTracking 
+                                                    prescriptionId={selectedPrescription.id}
+                                                    medications={selectedPrescription.medications}
+                                                    startDate={selectedPrescription.startDate}
+                                                    endDate={selectedPrescription.endDate}
+                                                />
+                                            ) : (
+                                                <div className="text-center p-4">
+                                                    <p className="text-gray-600">No active prescriptions found.</p>
+                                                </div>
+                                            )}
+                                        </div>
                                     )}
                                 </div>
                             </div>
@@ -752,12 +805,12 @@ const Patient = () => {
                                                 </svg>
                                             </button>
                                         </Link>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </div>
                     </>
-            )}
+                )}
             </div>
         </div>
     );

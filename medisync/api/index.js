@@ -5,6 +5,9 @@ const doctorRoutes = require('./routes/doctorRoute');
 const patientRouter = require('./routes/patientRoute');
 const prescriptionRouter = require('./routes/prescriptionRoute');
 const scheduleRoutes = require('./routes/scheduleRoute');
+const hospitalRoutes = require('./routes/hospitalRoute');
+const hospitalSearchRoutes = require('./routes/hospitalSearchRoute');
+const appointmentRoutes = require('./routes/appointmentRoute');
 const path = require('path');
 
 const app = express();
@@ -26,7 +29,8 @@ app.get('/', (req, res) => {
             doctors: '/doctor',
             patients: '/patient',
             prescriptions: '/prescription',
-            schedule: '/api/schedule'
+            schedule: '/api/schedule',
+            appointments: '/appointment'
         }
     });
 });
@@ -36,6 +40,9 @@ app.use('/doctor', doctorRoutes);
 app.use('/patient', patientRouter);
 app.use('/prescription', prescriptionRouter);
 app.use('/schedule', scheduleRoutes);
+app.use('/hospital', hospitalRoutes);
+app.use('/api/hospitals', hospitalSearchRoutes);
+app.use('/appointment', appointmentRoutes);
 
 // Error handling middleware
 app.use((req, res, next) => {

@@ -19,6 +19,9 @@ import LoginPatient from './components/LoginPatient';
 import MedicationSchedule from './components/MedicationSchedule';
 import ProtectedDoctorRoute from './components/ProtectedDoctorRoute';
 import ProtectedPatientRoute from './components/ProtectedPatientRoute';
+import FindDoctor from "./components/FindDoctor";
+import DoctorProfile from "./components/DoctorProfile";
+import AddHospital from "./components/AddHospital";
 import Layout from './components/Layout';
 import Profile from './components/Profile';
 import { Toaster } from 'react-hot-toast';
@@ -54,8 +57,18 @@ function App() {
       <Routes>
         {/* Public routes */}
         <Route path='/' element={<Home />} />
+        <Route path="/find-doctor" element={<FindDoctor />} />
         <Route path='/login/doctor' element={<LoginDoctor />} />
         <Route path='/login/patient' element={<LoginPatient />} />
+        
+        {/* Protected Doctor routes */}
+        <Route path="/doctor-profile" element={
+          <ProtectedDoctorRoute>
+            <Layout userType="doctor">
+              <DoctorProfile />
+            </Layout>
+          </ProtectedDoctorRoute>
+        } />
         
         {/* Protected Patient routes */}
         <Route path='/patient' element={
@@ -107,6 +120,13 @@ function App() {
             </Layout>
           </ProtectedPatientRoute>
         } />
+        <Route path='/find-doctor' element={
+          <ProtectedPatientRoute>
+            <Layout userType="patient">
+              <FindDoctor />
+            </Layout>
+          </ProtectedPatientRoute>
+        } />
         <Route path='/emergency-help' element={
           <ProtectedPatientRoute>
             <Layout userType="patient">
@@ -132,6 +152,13 @@ function App() {
           <ProtectedPatientRoute>
             <Layout userType="patient">
               <MedicineInfo />
+            </Layout>
+          </ProtectedPatientRoute>
+        } />
+        <Route path='/find-doctor' element={
+          <ProtectedPatientRoute>
+            <Layout userType="patient">
+              <FindDoctor />
             </Layout>
           </ProtectedPatientRoute>
         } />
@@ -184,6 +211,11 @@ function App() {
             <Layout userType="doctor">
               <PatientList />
             </Layout>
+          </ProtectedDoctorRoute>
+        } />
+        <Route path='/add-hospital' element={
+          <ProtectedDoctorRoute>
+            <AddHospital />
           </ProtectedDoctorRoute>
         } />
       </Routes>

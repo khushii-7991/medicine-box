@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from 'react'
+import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 
 const BookAppointment = () => {
-    const [countries, setCountries] = useState([]);
-    const [selectedCountry, setSelectedCountry] = useState('');
+    // India is hardcoded as the country
+    const [selectedCountry] = useState('IN');
     const [states, setStates] = useState([]);
     const [selectedState, setSelectedState] = useState('');
     const [cities, setCities] = useState([]);
     const [selectedCity, setSelectedCity] = useState('');
-    const [countrySearch, setCountrySearch] = useState('');
     const [stateSearch, setStateSearch] = useState('');
     const [citySearch, setCitySearch] = useState('');
-    const [showCountryDropdown, setShowCountryDropdown] = useState(false);
     const [showStateDropdown, setShowStateDropdown] = useState(false);
     const [showCityDropdown, setShowCityDropdown] = useState(false);
     const [doctorCategories, setDoctorCategories] = useState([]);
@@ -25,76 +26,34 @@ const BookAppointment = () => {
     const [isFlexibleTiming, setIsFlexibleTiming] = useState(false);
     const [selectedTime, setSelectedTime] = useState('');
     const [patientName, setPatientName] = useState('');
-
-    // Mock medicine database - replace with your actual API
-    const medicineDatabase = {
-        'fever': [
-            {
-                name: 'Paracetamol',
-                dosage: '500mg',
-                timing: 'After meals, 3 times a day',
-                duration: '3-5 days',
-                sideEffects: 'Rare: Nausea, stomach pain',
-                precautions: 'Avoid alcohol, maintain hydration'
-            }
-        ],
-        'headache': [
-            {
-                name: 'Ibuprofen',
-                dosage: '400mg',
-                timing: 'With food, every 6-8 hours',
-                duration: 'As needed, not more than 3 days',
-                sideEffects: 'Stomach upset, dizziness',
-                precautions: 'Take with food, avoid if allergic to NSAIDs'
-            }
-        ],
-        'cough': [
-            {
-                name: 'Dextromethorphan',
-                dosage: '10-20mg',
-                timing: 'Every 4-6 hours',
-                duration: '5-7 days',
-                sideEffects: 'Drowsiness, dizziness',
-                precautions: 'Avoid alcohol, do not exceed recommended dose'
-            }
-        ],
-        'cold': [
-            {
-                name: 'Chlorpheniramine',
-                dosage: '4mg',
-                timing: 'Every 4-6 hours',
-                duration: '3-5 days',
-                sideEffects: 'Drowsiness, dry mouth',
-                precautions: 'Avoid driving, stay hydrated'
-            }
-        ]
-    };
+    const [selectedDate, setSelectedDate] = useState('');
+    const [reason, setReason] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+    const navigate = useNavigate();
 
     useEffect(() => {
-        const fetchCountries = async () => {
+        // Fetch states for India directly
+        const fetchStatesForIndia = async () => {
             try {
-                const response = await fetch('https://api.countrystatecity.in/v1/countries', {
+                const response = await fetch('https://api.countrystatecity.in/v1/countries/IN/states', {
                     headers: {
                         'X-CSCAPI-KEY': 'MldHMVRvWDdRMkFZVmQxQ1Z2TzgwVlZtM1hkR3NSZWhPcHhyS2ZQNA=='
                     }
                 });
                 const data = await response.json();
-                setCountries(data);
+                const sortedStates = data.sort((a, b) => a.name.localeCompare(b.name));
+                setStates(sortedStates);
             } catch (error) {
-                console.error('Error fetching countries:', error);
+                console.error('Error fetching states for India:', error);
             }
         };
 
         const fetchDoctorCategories = async () => {
             try {
-                // Replace this with your actual API endpoint
-                const response = await fetch('https://api.example.com/doctor-categories', {
-                    headers: {
-                        'Authorization': 'Bearer your-api-key'
-                    }
-                });
-                const data = await response.json();
-                setDoctorCategories(data);
+                // Fetch doctor categories from backend
+                const response = await axios.get('http://localhost:3000/doctor/categories');
+                setDoctorCategories(response.data);
             } catch (error) {
                 console.error('Error fetching doctor categories:', error);
                 // Fallback to default categories if API fails
@@ -161,36 +120,11 @@ const BookAppointment = () => {
             }
         };
 
-        fetchCountries();
+        fetchStatesForIndia();
         fetchDoctorCategories();
     }, []);
 
-    const handleCountrySelect = async (country) => {
-        setSelectedCountry(country.iso2);
-        setCountrySearch(country.name);
-        setShowCountryDropdown(false);
-        setSelectedState('');
-        setSelectedCity('');
-        setStates([]);
-        setCities([]);
-        setStateSearch('');
-        setCitySearch('');
-        setShowStateDropdown(false);
-        setShowCityDropdown(false);
 
-        try {
-            const response = await fetch(`https://api.countrystatecity.in/v1/countries/${country.iso2}/states`, {
-                headers: {
-                    'X-CSCAPI-KEY': 'MldHMVRvWDdRMkFZVmQxQ1Z2TzgwVlZtM1hkR3NSZWhPcHhyS2ZQNA=='
-                }
-            });
-            const data = await response.json();
-            const sortedStates = data.sort((a, b) => a.name.localeCompare(b.name));
-            setStates(sortedStates);
-        } catch (error) {
-            console.error('Error fetching states:', error);
-        }
-    };
 
     const handleStateSelect = async (state) => {
         setSelectedState(state.iso2);
@@ -220,71 +154,37 @@ const BookAppointment = () => {
         setCitySearch(city.name);
         setShowCityDropdown(false);
         
-        // Show doctor list only when all location details are selected
-        if (selectedCountry && selectedState && city.name) {
+        // Show doctor list when state, city and category are selected
+        if (selectedState && city.name && selectedCategory) {
             setShowDoctorList(true);
+            setLoading(true);
             try {
-                // Replace with your actual API endpoint
-                const response = await fetch(
-                    `https://api.example.com/doctors?specialization=${selectedCategory}&country=${selectedCountry}&state=${selectedState}&city=${city.name}`,
-                    {
-                        headers: {
-                            'Authorization': 'Bearer your-api-key'
-                        }
-                    }
+                // Fetch doctors from backend based on location and specialization
+                const response = await axios.get(
+                    `http://localhost:3000/doctor/search?speciality=${selectedCategory}&city=${city.name}`
                 );
-                const data = await response.json();
-                setDoctors(data);
+                console.log('Raw doctor data from API:', response.data);
+                
+                if (response.data && Array.isArray(response.data)) {
+                    setDoctors(response.data);
+                    console.log('Fetched doctors:', response.data);
+                    if (response.data.length === 0) {
+                        setError(`No ${selectedCategory} doctors found in ${city.name}. Try a different location or specialty.`);
+                    } else {
+                        setError('');
+                    }
+                } else {
+                    console.error('Invalid doctor data format:', response.data);
+                    setDoctors([]);
+                    setError('Error: Received invalid data format from server');
+                }
             } catch (error) {
                 console.error('Error fetching doctors:', error);
-                // Fallback mock data for testing
-                setDoctors([
-                    {
-                        id: 1,
-                        name: 'Dr. John Smith',
-                        specialization: selectedCategory,
-                        rating: 4.8,
-                        experience: '15 years',
-                        hospital: 'City General Hospital',
-                        availability: 'Mon-Fri, 9AM-5PM',
-                        image: 'https://via.placeholder.com/100',
-                        location: {
-                            country: selectedCountry,
-                            state: selectedState,
-                            city: city.name
-                        }
-                    },
-                    {
-                        id: 2,
-                        name: 'Dr. Sarah Johnson',
-                        specialization: selectedCategory,
-                        rating: 4.9,
-                        experience: '12 years',
-                        hospital: 'Metro Medical Center',
-                        availability: 'Tue-Sat, 10AM-6PM',
-                        image: 'https://via.placeholder.com/100',
-                        location: {
-                            country: selectedCountry,
-                            state: selectedState,
-                            city: city.name
-                        }
-                    },
-                    {
-                        id: 3,
-                        name: 'Dr. Michael Brown',
-                        specialization: selectedCategory,
-                        rating: 4.7,
-                        experience: '8 years',
-                        hospital: 'St. Mary\'s Hospital',
-                        availability: 'Mon-Thu, 8AM-4PM',
-                        image: 'https://via.placeholder.com/100',
-                        location: {
-                            country: selectedCountry,
-                            state: selectedState,
-                            city: city.name
-                        }
-                    }
-                ]);
+                // Set empty doctors array if no doctors are found or there's an error
+                setDoctors([]);
+                setError('Error fetching doctors. Please try again.');
+            } finally {
+                setLoading(false);
             }
         }
     };
@@ -293,20 +193,49 @@ const BookAppointment = () => {
         setSelectedCategory(category.name);
         setCategorySearch(category.name);
         setShowCategoryDropdown(false);
-        setShowDoctorList(false); // Don't show doctors until location is selected
         setSelectedDoctor(null);
         setDoctorSearch('');
         setRatingFilter(0);
+        
+        // If city is already selected, fetch doctors with the new category
+        if (selectedCity && selectedState) {
+            setShowDoctorList(true);
+            setLoading(true);
+            try {
+                const response = await axios.get(
+                    `http://localhost:3000/doctor/search?speciality=${category.name}&city=${selectedCity}`
+                );
+                console.log('Raw doctor data from API:', response.data);
+                
+                if (response.data && Array.isArray(response.data)) {
+                    setDoctors(response.data);
+                    console.log('Fetched doctors after category change:', response.data);
+                    if (response.data.length === 0) {
+                        setError(`No ${category.name} doctors found in ${selectedCity}. Try a different location or specialty.`);
+                    } else {
+                        setError('');
+                    }
+                } else {
+                    console.error('Invalid doctor data format:', response.data);
+                    setDoctors([]);
+                    setError('Error: Received invalid data format from server');
+                }
+            } catch (error) {
+                console.error('Error fetching doctors:', error);
+                setDoctors([]);
+                setError('Error fetching doctors. Please try again.');
+            } finally {
+                setLoading(false);
+            }
+        } else {
+            setShowDoctorList(false); // Don't show doctors until location is selected
+        }
     };
 
     const handleDoctorSelect = (doctor) => {
         setSelectedDoctor(doctor);
         setDoctorSearch(doctor.name);
     };
-
-    const filteredCountries = countries.filter(country => 
-        country.name.toLowerCase().includes(countrySearch.toLowerCase())
-    );
 
     const filteredStates = states.filter(state => 
         state.name.toLowerCase().includes(stateSearch.toLowerCase())
@@ -320,12 +249,23 @@ const BookAppointment = () => {
         category.name.toLowerCase().includes(categorySearch.toLowerCase())
     );
 
+    // Make sure we handle potentially undefined or null properties safely
     const filteredDoctors = doctors
-        .filter(doctor => 
-            doctor.name.toLowerCase().includes(doctorSearch.toLowerCase()) &&
-            doctor.rating >= ratingFilter
-        )
-        .sort((a, b) => b.rating - a.rating);
+        .filter(doctor => {
+            // Safely check if doctor has all required properties
+            if (!doctor || typeof doctor !== 'object') return false;
+            
+            // Check if name exists and matches search
+            const nameMatches = doctor.name && 
+                doctor.name.toLowerCase().includes(doctorSearch.toLowerCase());
+            
+            // Check if rating meets filter criteria (default to 5 if missing)
+            const ratingValue = doctor.rating || 4.5;
+            const ratingMatches = ratingValue >= ratingFilter;
+            
+            return nameMatches && ratingMatches;
+        })
+        .sort((a, b) => (b.rating || 4.5) - (a.rating || 4.5));
 
     const renderStars = (rating) => {
         return [...Array(5)].map((_, index) => (
@@ -340,32 +280,81 @@ const BookAppointment = () => {
         ));
     };
 
-    const handleSubmit = (e) => {
+    /**
+     * Handles form submission for booking an appointment.
+     * @param {Event} e Event object from form submission.
+     * @returns {Promise<void>}
+     */
+    const handleSubmit = async (e) => {
         e.preventDefault();
         
-        // Create new appointment object
-        const newAppointment = {
-            id: Date.now(), // Using timestamp as temporary ID
-            category: selectedCategory,
-            date: e.target.date.value,
-            time: isFlexibleTiming ? 'Flexible' : selectedTime,
-            status: 'Pending',
-            doctor: selectedDoctor ? selectedDoctor.name : 'To be assigned',
-            location: selectedDoctor ? selectedDoctor.hospital : 'To be determined',
-            patientName: patientName
-        };
+        if (!selectedDoctor) {
+            setError('Please select a doctor');
+            return;
+        }
 
-        // Get existing appointments from localStorage or initialize empty array
-        const existingAppointments = JSON.parse(localStorage.getItem('appointments') || '[]');
-        
-        // Add new appointment
-        const updatedAppointments = [...existingAppointments, newAppointment];
-        
-        // Save to localStorage
-        localStorage.setItem('appointments', JSON.stringify(updatedAppointments));
-        
-        // Redirect to MyAppointments page
-        window.location.href = '/my-appointments';
+        if (!selectedDate) {
+            setError('Please select a date');
+            return;
+        }
+
+        if (!isFlexibleTiming && !selectedTime) {
+            setError('Please select a time or choose flexible timing');
+            return;
+        }
+
+        if (!reason) {
+            setError('Please provide a reason for the appointment');
+            return;
+        }
+
+        try {
+            setLoading(true);
+            setError('');
+            
+            // Get token from localStorage
+            const token = localStorage.getItem('patientToken');
+            if (!token) {
+                setError('You must be logged in to book an appointment');
+                setLoading(false);
+                return;
+            }
+
+            // Create appointment request
+            const appointmentData = {
+                doctorId: selectedDoctor._id, // Now this will exist in both real and mock data
+                date: selectedDate,
+                time: selectedTime,
+                isFlexibleTiming,
+                reason
+            };
+            
+            console.log('Sending appointment data:', appointmentData);
+
+            // Send request to backend
+            const response = await axios.post(
+                'http://localhost:3000/appointment/create',
+                appointmentData,
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
+                }
+            );
+
+            setLoading(false);
+            
+            // Show success message
+            toast.success('Appointment request sent successfully!');
+            
+            // Redirect to patient dashboard
+            navigate('/patient');
+        } catch (err) {
+            setLoading(false);
+            setError(err.response?.data?.message || 'Failed to book appointment');
+            toast.error(err.response?.data?.message || 'Failed to book appointment');
+        }
     };
 
     return (
@@ -445,42 +434,19 @@ const BookAppointment = () => {
                         </div>
                     </div>
 
-                    <div class="relative">
-                        <label class="block mb-2 font-semibold">Country</label>
-                        <div class="relative">
-                            <input
-                                type="text"
-                                value={countrySearch}
-                                placeholder="Select country..."
-                                onClick={() => setShowCountryDropdown(!showCountryDropdown)}
-                                class="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-600 cursor-pointer"
-                                readOnly
-                            />
-                            {showCountryDropdown && (
-                                <div class="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg">
-                                    <div class="p-2 border-b">
-                                        <input
-                                            type="text"
-                                            placeholder="Search country..."
-                                            value={countrySearch}
-                                            onChange={(e) => setCountrySearch(e.target.value)}
-                                            class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-green-600"
-                                            onClick={(e) => e.stopPropagation()}
-                                        />
-                                    </div>
-                                    <div class="max-h-60 overflow-y-auto">
-                                        {filteredCountries.map((country) => (
-                                            <div
-                                                key={country.iso2}
-                                                onClick={() => handleCountrySelect(country)}
-                                                class="p-3 hover:bg-green-50 cursor-pointer"
-                                            >
-                                                {country.name}
-                                            </div>
-                                        ))}
-                                    </div>
+                    <div className="mb-4">
+                        <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
+                            <div className="flex items-center">
+                                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
+                                    </svg>
                                 </div>
-                            )}
+                                <div>
+                                    <p className="font-medium text-blue-800">Country: India</p>
+                                    <p className="text-sm text-blue-600">All appointments are for locations within India</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -570,7 +536,7 @@ const BookAppointment = () => {
                                 <div>
                                     <h3 class="text-xl font-semibold text-gray-800">Available Doctors</h3>
                                     <p class="text-sm text-gray-600">
-                                        Showing {selectedCategory} specialists in {selectedCity}, {selectedState}
+                                        Showing {selectedCategory} specialists in {selectedCity}, {selectedState}, India
                                     </p>
                                 </div>
                                 <div class="flex items-center space-x-2">
@@ -599,49 +565,62 @@ const BookAppointment = () => {
                             </div>
 
                             <div class="space-y-4 max-h-96 overflow-y-auto">
-                                {filteredDoctors.length > 0 ? (
+                                {loading ? (
+                                    <div className="text-center py-8">
+                                        <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-green-500"></div>
+                                        <p className="mt-2 text-gray-600">Searching for doctors...</p>
+                                    </div>
+                                ) : error ? (
+                                    <div className="text-center py-8">
+                                        <p className="text-red-500">{error}</p>
+                                        <p className="text-sm text-gray-500 mt-2">
+                                            Try selecting a different location or specialization.
+                                        </p>
+                                    </div>
+                                ) : filteredDoctors.length > 0 ? (
                                     filteredDoctors.map((doctor) => (
                                         <div
-                                            key={doctor.id}
+                                            key={doctor._id}
                                             onClick={() => handleDoctorSelect(doctor)}
-                                            class={`p-4 border rounded-lg cursor-pointer transition-all ${
-                                                selectedDoctor?.id === doctor.id
+                                            className={`p-4 border rounded-lg cursor-pointer transition-all ${
+                                                selectedDoctor?._id === doctor._id
                                                     ? 'border-green-500 bg-green-50'
                                                     : 'hover:border-green-300'
                                             }`}
                                         >
-                                            <div class="flex items-start space-x-4">
-                                                <img
-                                                    src={doctor.image}
-                                                    alt={doctor.name}
-                                                    class="w-16 h-16 rounded-full object-cover"
-                                                />
-                                                <div class="flex-1">
-                                                    <div class="flex items-center justify-between">
-                                                        <h4 class="font-semibold text-lg">{doctor.name}</h4>
-                                                        <div class="flex items-center">
-                                                            {renderStars(doctor.rating)}
-                                                            <span class="ml-1 text-sm text-gray-600">
-                                                                ({doctor.rating})
-                                                            </span>
-                                                        </div>
+                                            <div className="flex items-start space-x-4">
+                                                <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center text-green-600 text-xl font-bold">
+                                                    {doctor.name.charAt(0)}
+                                                </div>
+                                                <div className="flex-1">
+                                                    <div className="flex items-center justify-between">
+                                                        <h4 className="font-semibold text-lg">{doctor.name || 'Doctor'}</h4>
+                                                        <div className="flex items-center">
+                                                        {renderStars(doctor.rating || 4.5)}
+                                                        <span className="ml-1 text-sm text-gray-600">
+                                                            ({doctor.rating || 4.5})
+                                                        </span>
                                                     </div>
-                                                    <p class="text-sm text-gray-600">{doctor.specialization}</p>
-                                                    <p class="text-sm text-gray-600">
-                                                        {doctor.experience} experience • {doctor.hospital}
-                                                    </p>
-                                                    <p class="text-sm text-gray-600">
-                                                        Location: {doctor.location.city}, {doctor.location.state}
-                                                    </p>
-                                                    <p class="text-sm text-gray-600">Available: {doctor.availability}</p>
+                                                </div>
+                                                <p className="text-sm text-gray-600">{doctor.speciality || 'Specialist'}</p>
+                                                <p className="text-sm text-gray-600">
+                                                    {doctor.experience || '0'} years experience • {doctor.hospital?.name || 'Hospital'}
+                                                </p>
+                                                <p className="text-sm text-gray-600">
+                                                    Location: {doctor.city || 'Unknown'}, India
+                                                </p>
+                                                <p className="text-sm text-gray-600">
+                                                    Fee: ₹{doctor.consultationFee || 'Varies'}
+                                                </p>
+                                                <p className="text-sm text-gray-600">Available: {doctor.availability || 'Mon-Fri, 9AM-5PM'}</p>
                                                 </div>
                                             </div>
                                         </div>
                                     ))
                                 ) : (
-                                    <div class="text-center py-8">
-                                        <p class="text-gray-600">No doctors found in this location.</p>
-                                        <p class="text-sm text-gray-500 mt-2">
+                                    <div className="text-center py-8">
+                                        <p className="text-gray-600">No doctors found in this location.</p>
+                                        <p className="text-sm text-gray-500 mt-2">
                                             Try selecting a different location or specialization.
                                         </p>
                                     </div>
@@ -652,8 +631,14 @@ const BookAppointment = () => {
 
                     <div>
                         <label class="block mb-2 font-semibold">Select Date</label>
-                        <input type="date" name="date" required
-                            class="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-600" />
+                        <input 
+                            type="date" 
+                            name="date" 
+                            required
+                            value={selectedDate}
+                            onChange={(e) => setSelectedDate(e.target.value)}
+                            class="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-600" 
+                        />
                     </div>
 
                     <div class="space-y-3">
@@ -694,14 +679,46 @@ const BookAppointment = () => {
                     </div>
 
                     <div>
-                        <button type="submit"
-                            class="w-full bg-green-800 text-white py-3 rounded-xl text-lg hover:bg-green-900 transition">Book Appointment</button>
+                        <label class="block mb-2 font-semibold">Reason for Visit</label>
+                        <textarea
+                            name="reason"
+                            value={reason}
+                            onChange={(e) => setReason(e.target.value)}
+                            required
+                            placeholder="Please describe your symptoms or reason for the appointment"
+                            class="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-600 min-h-[100px]"
+                        ></textarea>
                     </div>
+
+                    {error && (
+                        <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                            {error}
+                        </div>
+                    )}
+
+                    <div>
+                        <button 
+                            type="submit"
+                            disabled={loading}
+                            class={`w-full ${loading ? 'bg-gray-400' : 'bg-green-800 hover:bg-green-900'} text-white py-3 rounded-xl text-lg transition flex items-center justify-center`}
+                        >
+                            {loading ? (
+                                <>
+                                    <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    Processing...
+                                </>
+                            ) : 'Book Appointment'}
+                        </button>
+                    </div>
+
                 </form>
             </div>
 
             <footer class="text-center text-sm text-gray-500 p-5 mt-10">
-                © 2025 Smart Medical System. All rights reserved.
+                2025 Smart Medical System. All rights reserved.
             </footer>
         </div>
     )
