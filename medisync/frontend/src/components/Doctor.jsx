@@ -205,6 +205,7 @@ const Doctor = () => {
                 },
                 body: JSON.stringify({
                     patientId: newAppointment.patientId,
+                    doctorId: doctorData._id, // Explicitly include doctorId
                     date: formattedDate,
                     time: newAppointment.time,
                     reason: newAppointment.reason,
