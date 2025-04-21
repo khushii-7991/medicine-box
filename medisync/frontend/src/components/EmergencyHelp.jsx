@@ -27,6 +27,60 @@ const EmergencyHelp = () => {
         rating: 'N/A'
     });
 
+    const [hospitals, setHospitals] = useState([
+        {
+            id: 1,
+            name: 'City General Hospital',
+            address: '123 Medical Center Drive',
+            phone: '123-456-7890',
+            distance: '2.5 km',
+            emergency: true
+        },
+        {
+            id: 2,
+            name: 'St. Mary\'s Medical Center',
+            address: '456 Health Avenue',
+            phone: '234-567-8901',
+            distance: '3.1 km',
+            emergency: true
+        },
+        {
+            id: 3,
+            name: 'Community Health Center',
+            address: '789 Wellness Street',
+            phone: '345-678-9012',
+            distance: '4.2 km',
+            emergency: true
+        }
+    ]);
+
+    const [ambulances, setAmbulances] = useState([
+        {
+            id: 1,
+            name: 'Emergency Medical Services',
+            phone: '911',
+            responseTime: '5-10 minutes',
+            available: true
+        },
+        {
+            id: 2,
+            name: 'Rapid Response Ambulance',
+            phone: '112',
+            responseTime: '7-12 minutes',
+            available: true
+        },
+        {
+            id: 3,
+            name: 'City Emergency Services',
+            phone: '108',
+            responseTime: '8-15 minutes',
+            available: true
+        }
+    ]);
+
+    const [selectedHospital, setSelectedHospital] = useState(null);
+    const [selectedAmbulance, setSelectedAmbulance] = useState(null);
+
     // Load Google Maps script
     useEffect(() => {
         if (!GOOGLE_MAPS_API_KEY) {
@@ -229,6 +283,16 @@ const EmergencyHelp = () => {
         }
     ];
 
+    const handleCallHospital = (hospital) => {
+        setSelectedHospital(hospital);
+        window.location.href = `tel:${hospital.phone}`;
+    };
+
+    const handleCallAmbulance = (ambulance) => {
+        setSelectedAmbulance(ambulance);
+        window.location.href = `tel:${ambulance.phone}`;
+    };
+
     return (
         <div className="min-h-screen bg-gray-50">
             {/* Header */}
@@ -361,7 +425,7 @@ const EmergencyHelp = () => {
                                     <p className="text-gray-600 mb-2">{hospital.address}</p>
                                     {hospital.phone && (
                                         <button 
-                                            onClick={() => handleCall(hospital.phone)}
+                                            onClick={() => handleCallHospital(hospital)}
                                             className="text-blue-600 hover:text-blue-800 flex items-center mb-2"
                                         >
                                             <FaPhone className="mr-1" /> {hospital.phone}
@@ -383,6 +447,40 @@ const EmergencyHelp = () => {
                             ))}
                         </div>
                     )}
+                </div>
+
+                {/* Ambulance Services */}
+                <div className="bg-white rounded-lg shadow p-4">
+                    <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-xl font-semibold flex items-center">
+                            <FaAmbulance className="mr-2" /> Ambulance Services
+                        </h2>
+                    </div>
+
+                    <div className="space-y-4">
+                        {ambulances.map(ambulance => (
+                            <div key={ambulance.id} className="border rounded-lg p-4 hover:bg-gray-50">
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <h3 className="font-medium text-gray-800">{ambulance.name}</h3>
+                                        <p className="text-sm text-gray-500 mt-1">
+                                            Response Time: {ambulance.responseTime}
+                                        </p>
+                                        <p className={`text-sm mt-1 ${ambulance.available ? 'text-green-600' : 'text-red-600'}`}>
+                                            {ambulance.available ? 'Available' : 'Unavailable'}
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={() => handleCallAmbulance(ambulance)}
+                                        className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
+                                    >
+                                        <FaPhone />
+                                        Call
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
 
                 {/* Emergency Numbers */}

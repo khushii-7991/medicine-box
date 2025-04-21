@@ -21,7 +21,6 @@ const ViewPrescriptions = () => {
     const [showManualForm, setShowManualForm] = useState(false);
     const [newMedicine, setNewMedicine] = useState({
         medicine: '',
-        dosage: '',
         timing: '',
         duration: ''
     });
@@ -323,7 +322,6 @@ const ViewPrescriptions = () => {
     const handleAddToPrescription = (medicine) => {
         const newPrescription = {
             medicine: medicine.name,
-            dosage: medicine.dosage,
             timing: medicine.timing,
             duration: medicine.duration
         };
@@ -366,7 +364,6 @@ const ViewPrescriptions = () => {
         e.preventDefault();
         const newPrescription = {
             medicine: newMedicine.medicine,
-            dosage: newMedicine.dosage,
             timing: newMedicine.timing,
             duration: newMedicine.duration
         };
@@ -375,7 +372,6 @@ const ViewPrescriptions = () => {
         localStorage.setItem('prescriptions', JSON.stringify(updatedPrescriptions));
         setNewMedicine({
             medicine: '',
-            dosage: '',
             timing: '',
             duration: ''
         });
@@ -386,7 +382,6 @@ const ViewPrescriptions = () => {
     const handleAddToPrescriptions = (medicine) => {
         const newPrescription = {
             medicine: medicine.name,
-            dosage: medicine.dosage,
             timing: medicine.frequency,
             duration: medicine.duration
         };
@@ -416,10 +411,9 @@ const ViewPrescriptions = () => {
                         <table className="w-full bg-white border-collapse">
                             <thead className="bg-green-900 text-white">
                                 <tr>
-                                    <th className="py-3 px-8 text-left w-1/4">Medicine</th>
-                                    <th className="py-3 px-8 text-left w-1/4">Dosage</th>
-                                    <th className="py-3 px-8 text-left w-1/4">Meal Timing</th>
-                                    <th className="py-3 px-8 text-left w-1/4">Duration</th>
+                                    <th className="py-3 px-8 text-left w-1/3">Medicine</th>
+                                    <th className="py-3 px-8 text-left w-1/3">Meal Timing</th>
+                                    <th className="py-3 px-8 text-left w-1/3">Duration</th>
                                     <th className="py-3 px-8 text-left w-1/6">Actions</th>
                                 </tr>
                             </thead>
@@ -427,7 +421,6 @@ const ViewPrescriptions = () => {
                                 {prescriptions.map((prescription, index) => (
                                     <tr key={index} className="border-t">
                                         <td className="py-3 px-8">{prescription.medicine}</td>
-                                        <td className="py-3 px-8">{prescription.dosage}</td>
                                         <td className="py-3 px-8">{prescription.timing}</td>
                                         <td className="py-3 px-8">{prescription.duration}</td>
                                         <td className="py-3 px-8">
@@ -483,33 +476,17 @@ const ViewPrescriptions = () => {
                                 </div>
                                 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Dosage</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Meal Timing</label>
                                     <input
                                         type="text"
-                                        value={newMedicine.dosage}
-                                        onChange={(e) => setNewMedicine({...newMedicine, dosage: e.target.value})}
+                                        value={newMedicine.timing}
+                                        onChange={(e) => setNewMedicine({...newMedicine, timing: e.target.value})}
                                         className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-600"
-                                        placeholder="e.g. 2 Times a Day"
+                                        placeholder="e.g. After Meal"
                                         required
                                     />
                                 </div>
                                 
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Timing</label>
-                                    <select
-                                        value={newMedicine.timing}
-                                        onChange={(e) => setNewMedicine({...newMedicine, timing: e.target.value})}
-                                        className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-600"
-                                        required
-                                    >
-                                        <option value="">Select timing</option>
-                                        <option value="Before Meal">Before Meal</option>
-                                        <option value="After Meal">After Meal</option>
-                                        <option value="With Meal">With Meal</option>
-                                        <option value="Anytime">Anytime</option>
-                                    </select>
-                                </div>
-
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Duration</label>
                                     <input

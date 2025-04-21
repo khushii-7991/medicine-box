@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react'
+import { FaPlus, FaCheck, FaTimes, FaClock } from 'react-icons/fa'
 import MedicineTracking from './MedicineTracking';
+import { toast } from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 
 const HealthRemainders = () => {
     const [medicines, setMedicines] = useState([]);
@@ -29,6 +32,21 @@ const HealthRemainders = () => {
     const [editReminderNotes, setEditReminderNotes] = useState('');
     const [prescriptions, setPrescriptions] = useState([]);
     const [addedToStreak, setAddedToStreak] = useState([]);
+    const [manualDosage, setManualDosage] = useState('');
+    const [morningDosage, setMorningDosage] = useState('');
+    const [eveningDosage, setEveningDosage] = useState('');
+    const [afternoonDosage, setAfternoonDosage] = useState('');
+    const [reminderType, setReminderType] = useState('prescription');
+    const [frequency, setFrequency] = useState('once');
+    const [customMorningTime, setCustomMorningTime] = useState('08:00');
+    const [customAfternoonTime, setCustomAfternoonTime] = useState('14:00');
+    const [customEveningTime, setCustomEveningTime] = useState('20:00');
+    const [prescriptionMedicines, setPrescriptionMedicines] = useState([]);
+    const [prescriptionMorningTime, setPrescriptionMorningTime] = useState('08:00');
+    const [prescriptionAfternoonTime, setPrescriptionAfternoonTime] = useState('14:00');
+    const [prescriptionEveningTime, setPrescriptionEveningTime] = useState('20:00');
+    const [duration, setDuration] = useState('7');
+    const navigate = useNavigate();
 
     // Function to add 6 hours to a time string
     const addSixHours = (timeStr) => {
@@ -56,29 +74,73 @@ const HealthRemainders = () => {
     // Function to check if a reminder's duration has expired
     const isDurationExpired = (reminder) => {
         if (!reminder.endDate) return false;
-        return new Date() > new Date(reminder.endDate);
+        const endDate = new Date(reminder.endDate);
+        const currentDate = new Date();
+        return currentDate > endDate;
     };
 
     // Function to calculate end date from duration
     const calculateEndDate = (startDate, duration) => {
-        const start = new Date(startDate);
-        const durationInDays = parseInt(duration);
-        const end = new Date(start);
-        end.setDate(start.getDate() + durationInDays);
-        return end.toISOString().split('T')[0];
+        const endDate = new Date(startDate);
+        endDate.setDate(endDate.getDate() + parseInt(duration));
+        return endDate.toISOString();
     };
+
+    // Function to check if all dosages are completed for a medicine
+    const areAllDosagesCompleted = (medicineName) => {
+        const medicineReminders = reminders.filter(r => r.medicineName === medicineName);
+        return medicineReminders.length > 0 && medicineReminders.every(r => r.completed);
+    };
+
+    // Function to check and delete completed reminders
+    const checkAndDeleteCompletedReminders = () => {
+        const medicines = [...new Set(reminders.map(r => r.medicineName))];
+        const updatedReminders = reminders.filter(reminder => {
+            // Keep the reminder if not all dosages are completed
+            return !areAllDosagesCompleted(reminder.medicineName);
+        });
+
+        if (updatedReminders.length !== reminders.length) {
+            setReminders(updatedReminders);
+            localStorage.setItem('reminders', JSON.stringify(updatedReminders));
+            console.log('Completed reminders have been deleted');
+        }
+    };
+
+    // Set up interval to check for completed reminders
+    useEffect(() => {
+        // Check immediately when component mounts
+        checkAndDeleteCompletedReminders();
+
+        // Set up interval to check every minute
+        const intervalId = setInterval(checkAndDeleteCompletedReminders, 60 * 1000);
+
+        // Clean up interval on component unmount
+        return () => clearInterval(intervalId);
+    }, [reminders]);
 
     useEffect(() => {
         // Load prescriptions and reminders
         const savedPrescriptions = JSON.parse(localStorage.getItem('prescriptions') || '[]');
         const savedReminders = JSON.parse(localStorage.getItem('reminders') || '[]');
         
+        // Set default prescriptions if none exist
+        if (savedPrescriptions.length === 0) {
+            const defaultPrescriptions = [
+                { medicine: 'Paracetamol', dosage: '2 Times a Day', timing: 'After Meal', duration: '5 Days' },
+                { medicine: 'Vitamin C', dosage: 'Once a Day', timing: 'Before Meal', duration: '10 Days' }
+            ];
+            setPrescriptions(defaultPrescriptions);
+            localStorage.setItem('prescriptions', JSON.stringify(defaultPrescriptions));
+        } else {
+            setPrescriptions(savedPrescriptions);
+        }
+        
         // Filter out reminders for medicines that are no longer in prescriptions
         const validReminders = savedReminders.filter(reminder => 
             savedPrescriptions.some(p => p.medicine === reminder.medicine)
         );
         
-        setPrescriptions(savedPrescriptions);
         setReminders(validReminders);
         localStorage.setItem('reminders', JSON.stringify(validReminders));
 
@@ -127,6 +189,13 @@ const HealthRemainders = () => {
         setAddedToStreak(existingStreakMedicines.map(m => m.name));
     }, []);
 
+    // Add useEffect to load prescription medicines
+    useEffect(() => {
+        // Load prescription medicines from localStorage
+        const savedPrescriptions = JSON.parse(localStorage.getItem('prescriptions') || '[]');
+        setPrescriptionMedicines(savedPrescriptions);
+    }, []);
+
     const handleMedicineSelect = (medicine) => {
         setSelectedMedicine(medicine.name);
         setSelectedMedicineData(medicine);
@@ -158,172 +227,234 @@ const HealthRemainders = () => {
         }
     };
 
-    const handleReminderComplete = (id) => {
-        setReminders(prevReminders => {
-            const updatedReminders = prevReminders.map(reminder => {
-                if (reminder.id === id) {
-                    if (isBeforeScheduledTime(reminder)) {
-                        alert('Cannot mark medicine as taken before scheduled time');
-                        return reminder;
-                    }
+    const createRemindersForDate = (date, medicineDetails, timing, customTime = null) => {
+        const [hours, minutes] = (customTime || timing === 'morning' ? morningTime : 
+                                 timing === 'afternoon' ? afternoonTime : eveningTime).split(':').map(Number);
+        const reminderDateTime = new Date(date);
+        reminderDateTime.setHours(hours, minutes, 0, 0);
 
-                    const now = new Date();
-                    const [hours, minutes] = reminder.time.split(':').map(Number);
-                    const reminderTime = new Date();
-                    reminderTime.setHours(hours, minutes, 0, 0);
-                    
-                    const timeDiff = now - reminderTime;
-                    const isOnTime = timeDiff <= 15 * 60 * 1000; // 15 minutes in milliseconds
-                    
-                    return { 
-                        ...reminder, 
-                        completed: true, 
-                        missed: false,
-                        status: isOnTime ? 'taken_on_time' : 'taken_late',
-                        lastCompleted: new Date().toISOString()
-                    };
-                }
-                return reminder;
-            });
-            localStorage.setItem('reminders', JSON.stringify(updatedReminders));
-            return updatedReminders;
-        });
+        return {
+            id: Date.now() + Math.random(),
+            title: selectedMedicine,
+            date: reminderDateTime.toISOString(),
+            medicine: selectedMedicine,
+            timing: timing,
+            customTime: customTime,
+            dosage: medicineDetails.dosage || dosage,
+            completed: false,
+            endDate: calculateEndDate(date, medicineDetails.duration || duration)
+        };
     };
 
     const handleAddReminder = (e) => {
         e.preventDefault();
-        if (!reminderTitle || !selectedMedicine) {
-            alert('Please fill in all required fields');
+        
+        // Only check for medicine selection if it's a prescription type
+        if (reminderType === 'prescription' && !selectedMedicine) {
+            toast.error('Please select a medicine');
             return;
         }
 
-        // Check if the selected medicine exists in prescriptions
-        const medicineExists = prescriptions.some(p => p.medicine === selectedMedicine);
-        if (!medicineExists) {
-            alert('Please add this medicine to your prescriptions first');
-            return;
-        }
-
-        const medicine = medicines.find(m => m.name === selectedMedicine);
-        if (!medicine) {
-            alert('Selected medicine not found');
+        // For manual entry, check if title is provided
+        if (reminderType === 'manual' && !reminderTitle) {
+            toast.error('Please enter a medicine name');
             return;
         }
 
         const newReminders = [];
         const currentDate = new Date();
 
-        if (medicine.dosage.includes('2 Times')) {
-            // Create morning reminder
-            const [morningHours, morningMinutes] = morningTime.split(':').map(Number);
-            const morningReminderTime = new Date(currentDate);
-            morningReminderTime.setHours(morningHours, morningMinutes, 0, 0);
-
-            newReminders.push({
-                id: Date.now(),
-                title: `${reminderTitle} (Morning)`,
-                time: morningReminderTime.toISOString(),
-                medicine: selectedMedicine,
-                completed: false,
-                startDate: startDate,
-                endDate: endDate,
-                notes: reminderNotes
-            });
-
-            // Create evening reminder
-            const [eveningHours, eveningMinutes] = eveningTime.split(':').map(Number);
-            const eveningReminderTime = new Date(currentDate);
-            eveningReminderTime.setHours(eveningHours, eveningMinutes, 0, 0);
-
-            newReminders.push({
-                id: Date.now() + 1,
-                title: `${reminderTitle} (Evening)`,
-                time: eveningReminderTime.toISOString(),
-                medicine: selectedMedicine,
-                completed: false,
-                startDate: startDate,
-                endDate: endDate,
-                notes: reminderNotes
-            });
-        } else if (medicine.dosage.includes('3 Times')) {
-            // Create morning reminder
-            const [morningHours, morningMinutes] = morningTime.split(':').map(Number);
-            const morningReminderTime = new Date(currentDate);
-            morningReminderTime.setHours(morningHours, morningMinutes, 0, 0);
-
-            newReminders.push({
-                id: Date.now(),
-                title: `${reminderTitle} (Morning)`,
-                time: morningReminderTime.toISOString(),
-                medicine: selectedMedicine,
-                completed: false,
-                startDate: startDate,
-                endDate: endDate,
-                notes: reminderNotes
-            });
-
-            // Create afternoon reminder
-            const [afternoonHours, afternoonMinutes] = afternoonTime.split(':').map(Number);
-            const afternoonReminderTime = new Date(currentDate);
-            afternoonReminderTime.setHours(afternoonHours, afternoonMinutes, 0, 0);
-
-            newReminders.push({
-                id: Date.now() + 1,
-                title: `${reminderTitle} (Afternoon)`,
-                time: afternoonReminderTime.toISOString(),
-                medicine: selectedMedicine,
-                completed: false,
-                startDate: startDate,
-                endDate: endDate,
-                notes: reminderNotes
-            });
-
-            // Create evening reminder
-            const [eveningHours, eveningMinutes] = eveningTime.split(':').map(Number);
-            const eveningReminderTime = new Date(currentDate);
-            eveningReminderTime.setHours(eveningHours, eveningMinutes, 0, 0);
-
-            newReminders.push({
-                id: Date.now() + 2,
-                title: `${reminderTitle} (Evening)`,
-                time: eveningReminderTime.toISOString(),
-                medicine: selectedMedicine,
-                completed: false,
-                startDate: startDate,
-                endDate: endDate,
-                notes: reminderNotes
-            });
+        // Get medicine details based on type
+        let medicineDetails;
+        if (reminderType === 'prescription') {
+            medicineDetails = prescriptions.find(p => p.medicine === selectedMedicine);
+            if (!medicineDetails) {
+                toast.error('Selected medicine not found in prescriptions');
+                return;
+            }
         } else {
-            // Create single reminder
-            const [hours, minutes] = morningTime.split(':').map(Number);
-            const reminderTime = new Date(currentDate);
-            reminderTime.setHours(hours, minutes, 0, 0);
-
-            newReminders.push({
-                id: Date.now(),
-                title: reminderTitle,
-                time: reminderTime.toISOString(),
-                medicine: selectedMedicine,
-                completed: false,
-                startDate: startDate,
-                endDate: endDate,
-                notes: reminderNotes
-            });
+            // For manual entry, create basic medicine details
+            medicineDetails = {
+                medicine: reminderTitle,
+                dosage: manualDosage || '1 tablet', // Default dosage if not provided
+                duration: '7' // Default duration
+            };
         }
 
-        const updatedReminders = [...reminders, ...newReminders];
+        // Calculate end date
+        const endDate = new Date(currentDate);
+        endDate.setDate(endDate.getDate() + 7); // Default 7 days duration
+
+        // Create reminders for each day until end date
+        let currentDay = new Date(currentDate);
+        while (currentDay <= endDate) {
+            if (frequency === 'once') {
+                newReminders.push(createRemindersForDate(new Date(currentDay), medicineDetails, 'morning'));
+            } else if (frequency === 'twice') {
+                newReminders.push(createRemindersForDate(new Date(currentDay), medicineDetails, 'morning'));
+                newReminders.push(createRemindersForDate(new Date(currentDay), medicineDetails, 'evening'));
+            } else if (frequency === 'thrice') {
+                newReminders.push(createRemindersForDate(new Date(currentDay), medicineDetails, 'morning'));
+                newReminders.push(createRemindersForDate(new Date(currentDay), medicineDetails, 'afternoon'));
+                newReminders.push(createRemindersForDate(new Date(currentDay), medicineDetails, 'evening'));
+            } else if (frequency === 'custom') {
+                if (morningTime) {
+                    newReminders.push(createRemindersForDate(new Date(currentDay), medicineDetails, 'morning', morningTime));
+                }
+                if (afternoonTime) {
+                    newReminders.push(createRemindersForDate(new Date(currentDay), medicineDetails, 'afternoon', afternoonTime));
+                }
+                if (eveningTime) {
+                    newReminders.push(createRemindersForDate(new Date(currentDay), medicineDetails, 'evening', eveningTime));
+                }
+            }
+            currentDay.setDate(currentDay.getDate() + 1);
+        }
+
+        if (newReminders.length > 0) {
+            const updatedReminders = [...reminders, ...newReminders];
+            setReminders(updatedReminders);
+            localStorage.setItem('reminders', JSON.stringify(updatedReminders));
+            toast.success('Reminder(s) added successfully');
+            
+            // Reset form fields
+            setSelectedMedicine('');
+            setFrequency('once');
+            setDosage('');
+            setMorningTime('');
+            setAfternoonTime('');
+            setEveningTime('');
+            setReminderTitle('');
+            setManualDosage('');
+            setShowAddReminder(false);
+
+            // Navigate to reminders list page
+            setTimeout(() => {
+                navigate('/reminders');
+            }, 500);
+        } else {
+            toast.error('Please select at least one time for the reminder');
+        }
+    };
+
+    // Update the canMarkAsTaken function
+    const canMarkAsTaken = (scheduledTime) => {
+        try {
+            const now = new Date();
+            const scheduled = new Date(scheduledTime);
+            
+            if (isNaN(scheduled.getTime())) {
+                console.error('Invalid scheduled time:', scheduledTime);
+                return false;
+            }
+
+            // Compare only hours and minutes
+            const nowHours = now.getHours();
+            const nowMinutes = now.getMinutes();
+            const scheduledHours = scheduled.getHours();
+            const scheduledMinutes = scheduled.getMinutes();
+            
+            // Convert to total minutes for comparison
+            const nowTotalMinutes = nowHours * 60 + nowMinutes;
+            const scheduledTotalMinutes = scheduledHours * 60 + scheduledMinutes;
+            
+            // Calculate difference in minutes
+            const diffMinutes = nowTotalMinutes - scheduledTotalMinutes;
+            
+            // Enable if current time is within 15 minutes after scheduled time
+            return diffMinutes >= 0 && diffMinutes <= 15;
+        } catch (error) {
+            console.error('Error in canMarkAsTaken:', error);
+            return false;
+        }
+    };
+
+    // Update the getTimeDifferenceMessage function
+    const getTimeDifferenceMessage = (scheduledTime) => {
+        try {
+            const now = new Date();
+            const scheduled = new Date(scheduledTime);
+            
+            if (isNaN(scheduled.getTime())) {
+                console.error('Invalid scheduled time:', scheduledTime);
+                return 'Invalid time';
+            }
+
+            // Compare only hours and minutes
+            const nowHours = now.getHours();
+            const nowMinutes = now.getMinutes();
+            const scheduledHours = scheduled.getHours();
+            const scheduledMinutes = scheduled.getMinutes();
+            
+            // Convert to total minutes for comparison
+            const nowTotalMinutes = nowHours * 60 + nowMinutes;
+            const scheduledTotalMinutes = scheduledHours * 60 + scheduledMinutes;
+            
+            // Calculate difference in minutes
+            const diffMinutes = scheduledTotalMinutes - nowTotalMinutes;
+            
+            if (diffMinutes <= 0) {
+                const minutesPassed = Math.abs(diffMinutes);
+                if (minutesPassed > 15) {
+                    return 'Time window expired';
+                }
+                return null;
+            }
+            
+            const hours = Math.floor(diffMinutes / 60);
+            const minutes = diffMinutes % 60;
+            
+            return `Available in ${hours > 0 ? `${hours}h ` : ''}${minutes}m`;
+        } catch (error) {
+            console.error('Error in getTimeDifferenceMessage:', error);
+            return 'Invalid time';
+        }
+    };
+
+    // Update the handleReminderComplete function
+    const handleReminderComplete = (reminderId) => {
+        const updatedReminders = reminders.map(reminder => {
+            if (reminder.id === reminderId) {
+                const now = new Date();
+                const scheduled = new Date(reminder.date);
+                
+                // Compare only hours and minutes
+                const nowHours = now.getHours();
+                const nowMinutes = now.getMinutes();
+                const scheduledHours = scheduled.getHours();
+                const scheduledMinutes = scheduled.getMinutes();
+                
+                // Convert to total minutes for comparison
+                const nowTotalMinutes = nowHours * 60 + nowMinutes;
+                const scheduledTotalMinutes = scheduledHours * 60 + scheduledMinutes;
+                
+                // Calculate difference in minutes
+                const diffMinutes = nowTotalMinutes - scheduledTotalMinutes;
+                
+                // Check if current time is within the 15-minute window
+                if (diffMinutes < 0 || diffMinutes > 15) {
+                    alert('You can only mark this medicine as taken within 15 minutes of its scheduled time.');
+                    return reminder;
+                }
+
+                return {
+                    ...reminder,
+                    completed: true,
+                    completedAt: new Date().toISOString(),
+                    status: diffMinutes <= 15 ? 'completed' : 'late'
+                };
+            }
+            return reminder;
+        });
+
         setReminders(updatedReminders);
         localStorage.setItem('reminders', JSON.stringify(updatedReminders));
 
-        setReminderTitle('');
-        setSelectedMedicine('');
-        setMorningTime('08:00');
-        setEveningTime('20:00');
-        setAfternoonTime('14:00');
-        setStartDate('');
-        setEndDate('');
-        setReminderNotes('');
-        setShowAddReminder(false);
+        // Emit event to notify medicine tracking
+        const event = new CustomEvent('remindersChanged', {
+            detail: { reminders: updatedReminders }
+        });
+        window.dispatchEvent(event);
     };
 
     const handleMarkAsCompleted = (reminderId) => {
@@ -385,50 +516,240 @@ const HealthRemainders = () => {
         medicine.name.toLowerCase().includes(medicineSearch.toLowerCase())
     );
 
+    // Update the reminder rendering to show completion status and manual dosage
+    const renderReminderStatus = (reminder) => {
+        const medicineReminders = reminders.filter(r => r.medicineName === reminder.medicineName);
+        const completedCount = medicineReminders.filter(r => r.completed).length;
+        const totalCount = medicineReminders.length;
+
+        return (
+            <div className="text-sm text-gray-600">
+                {reminder.dosage && (
+                    <p>Dosage: {reminder.dosage}</p>
+                )}
+                {totalCount > 1 && (
+                    <p>{completedCount}/{totalCount} dosages completed</p>
+                )}
+            </div>
+        );
+    };
+
     return (
         <div className="min-h-screen bg-gray-50 p-6">
             <div className="max-w-4xl mx-auto">
                 <div className="flex justify-between items-center mb-6">
                     <h1 className="text-2xl font-bold text-gray-800">Health Reminders</h1>
-                    {prescriptions.length > 0 ? (
-                        <button
-                            onClick={() => setShowAddReminder(true)}
-                            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
-                        >
-                            Add Reminder
-                        </button>
+                    <button
+                        onClick={() => setShowAddReminder(true)}
+                        className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2"
+                    >
+                        <FaPlus className="text-sm" />
+                        Add Reminder
+                    </button>
+                </div>
+
+                {/* View Reminders Section */}
+                <div className="bg-white rounded-lg shadow p-6 mb-6">
+                    <h2 className="text-xl font-semibold text-gray-800 mb-4">Your Reminders</h2>
+                    
+                    {reminders.length === 0 ? (
+                        <div className="text-center py-8">
+                            <p className="text-gray-600">No reminders set yet.</p>
+                            <p className="text-sm text-gray-500 mt-2">
+                                Click "Add Reminder" to create a new reminder for your medicines.
+                            </p>
+                        </div>
                     ) : (
-                        <div className="text-gray-500">
-                            No prescribed medicines available
+                        <div className="space-y-4">
+                            {reminders.slice(0, 5).map(reminder => {
+                                const canMark = canMarkAsTaken(reminder.date);
+                                const timeMessage = getTimeDifferenceMessage(reminder.date);
+                                const isExpired = timeMessage === 'Time window expired';
+                                
+                                return (
+                                    <div
+                                        key={reminder.id}
+                                        className={`p-4 rounded-lg border ${
+                                            reminder.completed
+                                                ? 'bg-green-50 border-green-200'
+                                                : isExpired
+                                                    ? 'bg-red-50 border-red-200'
+                                                    : 'bg-white border-gray-200'
+                                        }`}
+                                    >
+                                        <div className="flex justify-between items-start">
+                                            <div className="flex-1">
+                                                <h3 className="font-medium">{reminder.medicine}</h3>
+                                                <p className="text-sm text-gray-600">
+                                                    Time: {new Date(reminder.date).toLocaleTimeString()}
+                                                </p>
+                                                {reminder.completed && (
+                                                    <p className="text-sm text-gray-600">
+                                                        Taken at: {new Date(reminder.completedAt).toLocaleTimeString()}
+                                                    </p>
+                                                )}
+                                                {!canMark && timeMessage && (
+                                                    <p className={`text-sm mt-1 ${
+                                                        isExpired ? 'text-red-600' : 'text-yellow-600'
+                                                    }`}>
+                                                        {timeMessage}
+                                                    </p>
+                                                )}
+                                                {renderReminderStatus(reminder)}
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={() => handleReminderComplete(reminder.id)}
+                                                    disabled={!canMark || reminder.completed || isExpired}
+                                                    className={`p-2 rounded-full ${
+                                                        !canMark || reminder.completed || isExpired
+                                                            ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                                            : 'bg-green-500 text-white hover:bg-green-600'
+                                                    }`}
+                                                    title={
+                                                        isExpired 
+                                                            ? "Time window expired" 
+                                                            : !canMark 
+                                                            ? "Cannot mark as taken before scheduled time" 
+                                                            : "Mark as taken"
+                                                    }
+                                                >
+                                                    <FaCheck />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteReminder(reminder.id)}
+                                                    className="p-2 rounded-full bg-red-500 text-white hover:bg-red-600"
+                                                    title="Delete reminder"
+                                                >
+                                                    <FaTimes />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
                     )}
                 </div>
 
-                {prescriptions.length === 0 ? (
-                    <div className="bg-white rounded-lg shadow p-6 text-center">
-                        <p className="text-gray-600">No prescribed medicines found.</p>
-                        <p className="text-sm text-gray-500 mt-2">
-                            Please add medicines to your prescriptions first.
-                        </p>
-                    </div>
-                ) : (
-                    <>
-                        {showAddReminder && (
-                            <div className="fixed inset-0 bg-white flex items-center justify-center p-4">
-                                <div className="bg-white rounded-2xl shadow-xl p-6 max-w-lg w-full border border-gray-200">
-                                    <div className="flex justify-between items-center mb-4">
-                                        <h3 className="text-xl font-bold text-green-800">Add New Reminder</h3>
-                                        <button 
-                                            onClick={() => setShowAddReminder(false)}
-                                            className="text-gray-500 hover:text-gray-700"
-                                        >
-                                            ✕
-                                        </button>
+                {showAddReminder && (
+                    <div className="fixed inset-0 bg-white flex items-center justify-center p-4">
+                        <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full border border-gray-200 flex flex-col max-h-[90vh]">
+                            <div className="flex justify-between items-center p-6 border-b border-gray-200">
+                                <h3 className="text-xl font-bold text-green-800">Add New Reminder</h3>
+                                <button 
+                                    onClick={() => setShowAddReminder(false)}
+                                    className="text-gray-500 hover:text-gray-700"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                            
+                            <div className="overflow-y-auto p-6">
+                                <form onSubmit={handleAddReminder} className="space-y-4">
+                                    <div className="mb-4">
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Reminder Type</label>
+                                        <div className="flex gap-4">
+                                            <label className="flex items-center">
+                                                <input
+                                                    type="radio"
+                                                    value="prescription"
+                                                    checked={reminderType === 'prescription'}
+                                                    onChange={(e) => setReminderType(e.target.value)}
+                                                    className="mr-2"
+                                                />
+                                                From Prescription
+                                            </label>
+                                            <label className="flex items-center">
+                                                <input
+                                                    type="radio"
+                                                    value="manual"
+                                                    checked={reminderType === 'manual'}
+                                                    onChange={(e) => setReminderType(e.target.value)}
+                                                    className="mr-2"
+                                                />
+                                                Manual Entry
+                                            </label>
+                                        </div>
                                     </div>
-                                    
-                                    <form onSubmit={handleAddReminder} className="space-y-4">
+
+                                    {reminderType === 'manual' && (
+                                        <>
+                                            <div className="mb-4">
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">Medicine Name</label>
+                                                <input
+                                                    type="text"
+                                                    value={reminderTitle}
+                                                    onChange={(e) => setReminderTitle(e.target.value)}
+                                                    className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-600"
+                                                    placeholder="Enter medicine name"
+                                                    required
+                                                />
+                                            </div>
+                                            <div className="mb-4">
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">Dosage</label>
+                                                <input
+                                                    type="text"
+                                                    value={manualDosage}
+                                                    onChange={(e) => setManualDosage(e.target.value)}
+                                                    className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-600"
+                                                    placeholder="e.g., 1 tablet, 2 capsules"
+                                                />
+                                            </div>
+                                            <div className="mb-4">
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">Frequency</label>
+                                                <select
+                                                    value={frequency}
+                                                    onChange={(e) => setFrequency(e.target.value)}
+                                                    className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-600"
+                                                    required
+                                                >
+                                                    <option value="once">Once a Day</option>
+                                                    <option value="twice">Twice a Day</option>
+                                                    <option value="thrice">Three Times a Day</option>
+                                                    <option value="custom">Custom Times</option>
+                                                </select>
+                                            </div>
+                                            <div className="space-y-4">
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Morning Time</label>
+                                                    <input
+                                                        type="time"
+                                                        value={morningTime}
+                                                        onChange={(e) => setMorningTime(e.target.value)}
+                                                        className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-600"
+                                                        required
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Evening Time</label>
+                                                    <input
+                                                        type="time"
+                                                        value={eveningTime}
+                                                        onChange={(e) => setEveningTime(e.target.value)}
+                                                        className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-600"
+                                                        required
+                                                    />
+                                                </div>
+                                                {frequency === 'thrice' && (
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-700 mb-1">Afternoon Time</label>
+                                                        <input
+                                                            type="time"
+                                                            value={afternoonTime}
+                                                            onChange={(e) => setAfternoonTime(e.target.value)}
+                                                            className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-600"
+                                                            required
+                                                        />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </>
+                                    )}
+
+                                    {reminderType === 'prescription' && (
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Medicine</label>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Select Medicine</label>
                                             <select
                                                 value={selectedMedicine}
                                                 onChange={(e) => setSelectedMedicine(e.target.value)}
@@ -436,27 +757,69 @@ const HealthRemainders = () => {
                                                 required
                                             >
                                                 <option value="">Select Medicine</option>
-                                                {prescriptions.map((prescription, index) => (
-                                                    <option key={index} value={prescription.medicine}>
-                                                        {prescription.medicine} - {prescription.dosage}
+                                                {prescriptionMedicines.map((medicine, index) => (
+                                                    <option key={index} value={medicine.medicine}>
+                                                        {medicine.medicine} - {medicine.dosage}
                                                     </option>
                                                 ))}
                                             </select>
-                                        </div>
-                                        
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Reminder Title</label>
-                                            <input
-                                                type="text"
-                                                value={reminderTitle}
-                                                onChange={(e) => setReminderTitle(e.target.value)}
-                                                className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-600"
-                                                placeholder="Enter reminder title"
-                                                required
-                                            />
-                                        </div>
 
-                                        <div className="grid grid-cols-2 gap-4">
+                                            {selectedMedicine && (
+                                                <div className="space-y-4 mt-4">
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-700 mb-1">Morning Time</label>
+                                                        <input
+                                                            type="time"
+                                                            value={prescriptionMorningTime}
+                                                            onChange={(e) => setPrescriptionMorningTime(e.target.value)}
+                                                            className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-600"
+                                                            required
+                                                        />
+                                                    </div>
+                                                    
+                                                    {prescriptionMedicines.find(m => m.medicine === selectedMedicine)?.dosage.includes('2 Times') && (
+                                                        <div>
+                                                            <label className="block text-sm font-medium text-gray-700 mb-1">Evening Time</label>
+                                                            <input
+                                                                type="time"
+                                                                value={prescriptionEveningTime}
+                                                                onChange={(e) => setPrescriptionEveningTime(e.target.value)}
+                                                                className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-600"
+                                                                required
+                                                            />
+                                                        </div>
+                                                    )}
+
+                                                    {prescriptionMedicines.find(m => m.medicine === selectedMedicine)?.dosage.includes('3 Times') && (
+                                                        <>
+                                                            <div>
+                                                                <label className="block text-sm font-medium text-gray-700 mb-1">Afternoon Time</label>
+                                                                <input
+                                                                    type="time"
+                                                                    value={prescriptionAfternoonTime}
+                                                                    onChange={(e) => setPrescriptionAfternoonTime(e.target.value)}
+                                                                    className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-600"
+                                                                    required
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-sm font-medium text-gray-700 mb-1">Evening Time</label>
+                                                                <input
+                                                                    type="time"
+                                                                    value={prescriptionEveningTime}
+                                                                    onChange={(e) => setPrescriptionEveningTime(e.target.value)}
+                                                                    className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-600"
+                                                                    required
+                                                                />
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    <div className="space-y-4">
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
                                                 <input
@@ -477,67 +840,6 @@ const HealthRemainders = () => {
                                                     required
                                                 />
                                             </div>
-                                        </div>
-
-                                        {selectedMedicine && (
-                                            <div className="space-y-4">
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Morning Time</label>
-                                                    <input
-                                                        type="time"
-                                                        value={morningTime}
-                                                        onChange={handleMorningTimeChange}
-                                                        className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-600"
-                                                        required
-                                                    />
-                                                </div>
-
-                                                {medicines.find(m => m.name === selectedMedicine)?.dosage.includes('2 Times') && (
-                                                    <div>
-                                                        <label className="block text-sm font-medium text-gray-700 mb-1">Evening Time</label>
-                                                        <input
-                                                            type="time"
-                                                            value={eveningTime}
-                                                            readOnly
-                                                            className="w-full border rounded-lg p-3 bg-gray-50"
-                                                        />
-                                                    </div>
-                                                )}
-
-                                                {medicines.find(m => m.name === selectedMedicine)?.dosage.includes('3 Times') && (
-                                                    <>
-                                                        <div>
-                                                            <label className="block text-sm font-medium text-gray-700 mb-1">Afternoon Time</label>
-                                                            <input
-                                                                type="time"
-                                                                value={afternoonTime}
-                                                                readOnly
-                                                                className="w-full border rounded-lg p-3 bg-gray-50"
-                                                            />
-                                                        </div>
-                                                        <div>
-                                                            <label className="block text-sm font-medium text-gray-700 mb-1">Evening Time</label>
-                                                            <input
-                                                                type="time"
-                                                                value={eveningTime}
-                                                                readOnly
-                                                                className="w-full border rounded-lg p-3 bg-gray-50"
-                                                            />
-                                                        </div>
-                                                    </>
-                                                )}
-                                            </div>
-                                        )}
-                                        
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                                            <textarea
-                                                value={reminderNotes}
-                                                onChange={(e) => setReminderNotes(e.target.value)}
-                                                className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-600"
-                                                rows="3"
-                                                placeholder="Enter any additional notes..."
-                                            />
                                         </div>
 
                                         <div className="flex justify-between items-center">
@@ -571,71 +873,10 @@ const HealthRemainders = () => {
                                                 </button>
                                             </div>
                                         </div>
-                                    </form>
-                                </div>
+                                </form>
                             </div>
-                        )}
-
-                        <div className="space-y-4">
-                            {reminders.length === 0 ? (
-                                <div className="bg-white rounded-lg shadow p-6 text-center">
-                                    <p className="text-gray-600">No reminders set yet.</p>
-                                    <p className="text-sm text-gray-500 mt-2">
-                                        Click "Add Reminder" to create a new reminder for your prescribed medicines.
-                                    </p>
-                                </div>
-                            ) : (
-                                reminders.map(reminder => (
-                                    <div
-                                        key={reminder.id}
-                                        className={`p-4 rounded-lg border ${
-                                            reminder.completed
-                                                ? reminder.status === 'late'
-                                                    ? 'bg-red-50 border-red-200'
-                                                    : 'bg-green-50 border-green-200'
-                                                : isReminderMissed(reminder)
-                                                    ? 'bg-red-50 border-red-200'
-                                                    : 'bg-white border-gray-200'
-                                        }`}
-                                    >
-                                        <div className="flex justify-between items-center">
-                                            <div>
-                                                <h3 className="font-medium">{reminder.title}</h3>
-                                                <p className="text-gray-600">
-                                                    {new Date(reminder.time).toLocaleTimeString()} - {reminder.medicine}
-                                                </p>
-                                                {reminder.completed && (
-                                                    <p className="text-sm text-gray-500">
-                                                        Completed at: {new Date(reminder.completedAt).toLocaleTimeString()}
-                                                        {reminder.status === 'late' && ' (Late)'}
-                                                    </p>
-                                                )}
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                {!reminder.completed && !isReminderMissed(reminder) && (
-                                                    <button
-                                                        onClick={() => handleMarkAsCompleted(reminder.id)}
-                                                        className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600"
-                                                    >
-                                                        Mark as Taken
-                                                    </button>
-                                                )}
-                                                {isReminderMissed(reminder) && (
-                                                    <span className="text-red-500">Missed</span>
-                                                )}
-                                                <button
-                                                    onClick={() => handleDeleteReminder(reminder.id)}
-                                                    className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600"
-                                                >
-                                                    Delete
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))
-                            )}
                         </div>
-                    </>
+                    </div>
                 )}
             </div>
         </div>

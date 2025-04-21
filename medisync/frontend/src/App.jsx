@@ -25,6 +25,8 @@ import AddHospital from "./components/AddHospital";
 import Layout from './components/Layout';
 import Profile from './components/Profile';
 import { Toaster } from 'react-hot-toast';
+import MedicineTracking from './components/MedicineTracking';
+import MedicineInfo from './components/MedicineInfo';
 
 function App() {
 
@@ -136,6 +138,20 @@ function App() {
           <ProtectedPatientRoute>
             <Layout userType="patient">
               <MyAppointments />
+            </Layout>
+          </ProtectedPatientRoute>
+        } />
+        <Route path='/medicine-tracking' element={
+          <ProtectedPatientRoute>
+            <Layout userType="patient">
+              <MedicineTracking />
+            </Layout>
+          </ProtectedPatientRoute>
+        } />
+        <Route path='/medicine-info' element={
+          <ProtectedPatientRoute>
+            <Layout userType="patient">
+              <MedicineInfo />
             </Layout>
           </ProtectedPatientRoute>
         } />
