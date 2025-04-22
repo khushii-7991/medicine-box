@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+import NotificationBell from './NotificationBell';
 
 const Navbar = ({ userType }) => {
   const navigate = useNavigate();
@@ -112,6 +113,7 @@ const Navbar = ({ userType }) => {
 
           {/* User info and logout */}
           <div className="flex items-center gap-3">
+            <NotificationBell />
             <div className="bg-white rounded-full px-4 py-1.5 shadow-md">
               <span className={`font-medium ${colors.text}`}>{userName}</span>
             </div>

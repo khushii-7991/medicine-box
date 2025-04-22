@@ -2,137 +2,113 @@ import React, { useState, useEffect } from 'react';
 import { FiSearch, FiFilter, FiPlus, FiDownload, FiUser, FiCalendar, FiPhone, FiMail, FiHeart, FiActivity } from 'react-icons/fi';
 
 const PatientList = () => {
-    // Sample patient data - in a real app, this would come from an API
-    const [patients, setPatients] = useState([
-        {
-            id: 1,
-            name: "John Doe",
-            age: 45,
-            gender: "Male",
-            image: "https://randomuser.me/api/portraits/men/32.jpg",
-            phone: "+1234567890",
-            email: "john.doe@example.com",
-            lastVisit: "2025-04-10",
-            nextAppointment: "2025-04-25",
-            bloodGroup: "O+",
-            status: "active",
-            conditions: ["Hypertension", "Diabetes"],
-            riskLevel: "medium",
-            doctor: "Dr. Emily Chen",
-            medications: ["Lisinopril", "Metformin"],
-            notes: "Patient is responding well to current treatment plan."
-        },
-        {
-            id: 2,
-            name: "Jane Smith",
-            age: 30,
-            gender: "Female",
-            image: "https://randomuser.me/api/portraits/women/44.jpg",
-            phone: "+0987654321",
-            email: "jane.smith@example.com",
-            lastVisit: "2025-04-05",
-            nextAppointment: "2025-04-20",
-            bloodGroup: "A+",
-            status: "active",
-            conditions: ["Asthma"],
-            riskLevel: "low",
-            doctor: "Dr. Michael Rodriguez",
-            medications: ["Albuterol"],
-            notes: "Patient needs regular follow-up for asthma management."
-        },
-        {
-            id: 3,
-            name: "Michael Lee",
-            age: 60,
-            gender: "Male",
-            image: "https://randomuser.me/api/portraits/men/15.jpg",
-            phone: "+1122334455",
-            email: "michael.lee@example.com",
-            lastVisit: "2025-04-12",
-            nextAppointment: "2025-04-30",
-            bloodGroup: "B-",
-            status: "critical",
-            conditions: ["Coronary Artery Disease", "COPD"],
-            riskLevel: "high",
-            doctor: "Dr. Sarah Johnson",
-            medications: ["Atorvastatin", "Clopidogrel", "Tiotropium"],
-            notes: "Patient requires close monitoring due to recent cardiac event."
-        },
-        {
-            id: 4,
-            name: "Emily Wilson",
-            age: 28,
-            gender: "Female",
-            image: "https://randomuser.me/api/portraits/women/67.jpg",
-            phone: "+2233445566",
-            email: "emily.wilson@example.com",
-            lastVisit: "2025-03-25",
-            nextAppointment: "2025-04-22",
-            bloodGroup: "AB+",
-            status: "active",
-            conditions: ["Migraine", "Anxiety"],
-            riskLevel: "low",
-            doctor: "Dr. David Kim",
-            medications: ["Sumatriptan", "Sertraline"],
-            notes: "Patient reports improvement in migraine frequency with current medication."
-        },
-        {
-            id: 5,
-            name: "Robert Johnson",
-            age: 52,
-            gender: "Male",
-            image: "https://randomuser.me/api/portraits/men/92.jpg",
-            phone: "+3344556677",
-            email: "robert.johnson@example.com",
-            lastVisit: "2025-04-08",
-            nextAppointment: "2025-05-10",
-            bloodGroup: "A-",
-            status: "inactive",
-            conditions: ["Arthritis", "Hyperlipidemia"],
-            riskLevel: "medium",
-            doctor: "Dr. Lisa Wong",
-            medications: ["Celecoxib", "Rosuvastatin"],
-            notes: "Patient has not attended last two follow-up appointments."
-        },
-        {
-            id: 6,
-            name: "Sophia Martinez",
-            age: 35,
-            gender: "Female",
-            image: "https://randomuser.me/api/portraits/women/22.jpg",
-            phone: "+4455667788",
-            email: "sophia.martinez@example.com",
-            lastVisit: "2025-04-15",
-            nextAppointment: "2025-05-15",
-            bloodGroup: "O-",
-            status: "active",
-            conditions: ["Hypothyroidism"],
-            riskLevel: "low",
-            doctor: "Dr. James Wilson",
-            medications: ["Levothyroxine"],
-            notes: "Thyroid levels stable on current medication dosage."
-        }
-    ]);
-
-    // State for search, filtering, and selected patient
+    const [patients, setPatients] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
     const [searchTerm, setSearchTerm] = useState('');
-    const [activeFilter, setActiveFilter] = useState('all');
-    const [selectedPatient, setSelectedPatient] = useState(null);
-    const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'table'
-    
+    const [filterStatus, setFilterStatus] = useState('all');
+    const [sortBy, setSortBy] = useState('name');
+    const [sortOrder, setSortOrder] = useState('asc'); // 'grid' or 'table'
+    const [viewMode, setViewMode] = useState('grid');
+
+    // Random profile picture URLs for patients
+    const profilePictures = [
+        "https://randomuser.me/api/portraits/men/1.jpg",
+        "https://randomuser.me/api/portraits/women/2.jpg",
+        "https://randomuser.me/api/portraits/men/3.jpg",
+        "https://randomuser.me/api/portraits/women/4.jpg",
+        "https://randomuser.me/api/portraits/men/5.jpg",
+        "https://randomuser.me/api/portraits/women/6.jpg",
+        "https://randomuser.me/api/portraits/men/7.jpg",
+        "https://randomuser.me/api/portraits/women/8.jpg",
+        "https://randomuser.me/api/portraits/men/9.jpg",
+        "https://randomuser.me/api/portraits/women/10.jpg",
+        "https://randomuser.me/api/portraits/men/11.jpg",
+        "https://randomuser.me/api/portraits/women/12.jpg",
+        "https://randomuser.me/api/portraits/men/13.jpg",
+        "https://randomuser.me/api/portraits/women/14.jpg",
+        "https://randomuser.me/api/portraits/men/15.jpg",
+    ];
+
+    // Function to get a random profile picture
+    const getRandomProfilePicture = () => {
+        const randomIndex = Math.floor(Math.random() * profilePictures.length);
+        return profilePictures[randomIndex];
+    };
+
+    // Fetch patients from the backend
+    useEffect(() => {
+        const fetchPatients = async () => {
+            try {
+                setLoading(true);
+                setError(null);
+
+                // Get the doctor token
+                const token = localStorage.getItem('doctorToken');
+                if (!token) {
+                    throw new Error('Authentication required');
+                }
+
+                // Fetch patients from the backend
+                const response = await fetch(`http://localhost:3000/patient/all?page=${currentPage}&limit=10`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Error fetching patients: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log('Fetched patients:', data);
+
+                // Enhance patient data with random profile pictures and default values
+                const enhancedPatients = data.patients.map(patient => ({
+                    ...patient,
+                    id: patient._id,
+                    image: getRandomProfilePicture(),
+                    phone: patient.phone || '+1234567890',
+                    email: patient.email || 'patient@example.com',
+                    lastVisit: patient.lastVisit || '2025-04-15',
+                    nextAppointment: patient.nextAppointment || '2025-05-01',
+                    bloodGroup: patient.bloodGroup || 'O+',
+                    status: patient.status || 'active',
+                    conditions: patient.conditions || ['Check-up'],
+                    riskLevel: patient.riskLevel || 'low',
+                    doctor: 'Dr. ' + JSON.parse(localStorage.getItem('doctorData') || '{}').name || 'Unknown',
+                    medications: patient.medications || [],
+                    notes: patient.notes || 'Regular check-up patient.'
+                }));
+
+                setPatients(enhancedPatients);
+                setTotalPages(data.pagination.pages);
+            } catch (err) {
+                console.error('Error fetching patients:', err);
+                setError(err.message);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchPatients();
+    }, [currentPage]);
+
     // Filter patients based on search term and active filter
     const filteredPatients = patients.filter(patient => {
         // Search filter
         const matchesSearch = patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                              patient.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
                              patient.phone.includes(searchTerm);
-        
+
         // Status filter
-        const matchesFilter = activeFilter === 'all' || 
-                             (activeFilter === 'critical' && patient.riskLevel === 'high') ||
-                             (activeFilter === 'active' && patient.status === 'active') ||
-                             (activeFilter === 'inactive' && patient.status === 'inactive');
-        
+        const matchesFilter = filterStatus === 'all' ||
+                             (filterStatus === 'active' && patient.status === 'active') ||
+                             (filterStatus === 'inactive' && patient.status === 'inactive');
+
         return matchesSearch && matchesFilter;
     });
 
@@ -141,7 +117,7 @@ const PatientList = () => {
         const options = { year: 'numeric', month: 'long', day: 'numeric' };
         return new Date(dateString).toLocaleDateString('en-US', options);
     };
-    
+
     // Get risk level badge styling
     const getRiskBadge = (riskLevel) => {
         switch(riskLevel) {
@@ -182,12 +158,12 @@ const PatientList = () => {
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
-                
+
                 <div className="flex flex-wrap gap-2">
                     <button 
-                        onClick={() => setActiveFilter('all')}
+                        onClick={() => setFilterStatus('all')}
                         className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors duration-200 ${
-                            activeFilter === 'all' 
+                            filterStatus === 'all' 
                                 ? 'bg-indigo-100 text-indigo-700 border border-indigo-300' 
                                 : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
                         }`}
@@ -195,9 +171,9 @@ const PatientList = () => {
                         All Patients
                     </button>
                     <button 
-                        onClick={() => setActiveFilter('active')}
+                        onClick={() => setFilterStatus('active')}
                         className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors duration-200 ${
-                            activeFilter === 'active' 
+                            filterStatus === 'active' 
                                 ? 'bg-green-100 text-green-700 border border-green-300' 
                                 : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
                         }`}
@@ -205,19 +181,9 @@ const PatientList = () => {
                         Active
                     </button>
                     <button 
-                        onClick={() => setActiveFilter('critical')}
+                        onClick={() => setFilterStatus('inactive')}
                         className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors duration-200 ${
-                            activeFilter === 'critical' 
-                                ? 'bg-red-100 text-red-700 border border-red-300' 
-                                : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-                        }`}
-                    >
-                        Critical
-                    </button>
-                    <button 
-                        onClick={() => setActiveFilter('inactive')}
-                        className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors duration-200 ${
-                            activeFilter === 'inactive' 
+                            filterStatus === 'inactive' 
                                 ? 'bg-gray-200 text-gray-700 border border-gray-300' 
                                 : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
                         }`}
@@ -225,7 +191,7 @@ const PatientList = () => {
                         Inactive
                     </button>
                 </div>
-                
+
                 <div className="flex gap-2">
                     <button 
                         onClick={() => setViewMode('grid')}

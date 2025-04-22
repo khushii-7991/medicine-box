@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import React from 'react';
 import './App.css'
-import Home from './components/Home';
+import Landing from './components/landing';
 import Patient from './components/Patient';
 import Doctor from './components/Doctor';
 import AddPrescription from './components/AddPrescription';
@@ -28,36 +28,38 @@ import Profile from './components/Profile';
 import { Toaster } from 'react-hot-toast';
 import MedicineTracking from './components/MedicineTracking';
 import MedicineInfo from './components/MedicineInfo';
+import { NotificationProvider } from './context/NotificationContext';
 
 function App() {
 
   return (
-    <BrowserRouter>
-      {/* Toast container for notifications */}
-      <Toaster 
-        position="top-right"
-        toastOptions={{
-          duration: 3000,
-          style: {
-            background: '#363636',
-            color: '#fff',
-          },
-          success: {
+    <NotificationProvider>
+      <BrowserRouter>
+        {/* Toast container for notifications */}
+        <Toaster 
+          position="top-right"
+          toastOptions={{
+            duration: 3000,
             style: {
-              background: '#22c55e',
+              background: '#363636',
+              color: '#fff',
             },
-          },
-          error: {
-            style: {
-              background: '#ef4444',
+            success: {
+              style: {
+                background: '#22c55e',
+              },
             },
-          },
-        }}
+            error: {
+              style: {
+                background: '#ef4444',
+              },
+            },
+          }}
       />
       
       <Routes>
         {/* Public routes */}
-        <Route path='/' element={<Home />} />
+        <Route path='/' element={<Landing />} />
         <Route path="/find-doctor" element={<FindDoctor />} />
         <Route path='/login/doctor' element={<LoginDoctor />} />
         <Route path='/login/patient' element={<LoginPatient />} />
@@ -221,6 +223,7 @@ function App() {
         } />
       </Routes>
     </BrowserRouter>
+    </NotificationProvider>
   )
 }
 
