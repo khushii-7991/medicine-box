@@ -7,4 +7,15 @@ export default defineConfig({
     react(),
     tailwindcss()
   ],
+  server: {
+    proxy: {
+      '/doctor': 'http://localhost:3000',
+      '/patient': 'http://localhost:3000',
+      '/prescription': 'http://localhost:3000',
+      '/schedule': 'http://localhost:3000',
+      '/hospital': 'http://localhost:3000',
+      '/appointment': 'http://localhost:3000',
+      '/dashboard': 'http://localhost:3000'
+    }
+  }
 })

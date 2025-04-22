@@ -109,65 +109,80 @@ const ViewPrescriptions = () => {
             
             console.log('Fetching prescriptions for patient ID:', patientId);
             
-            // Fetch active prescriptions for this patient using XMLHttpRequest for better compatibility
-            const xhr = new XMLHttpRequest();
-            xhr.open('GET', `http://localhost:3000/prescription/patient/${patientId}/active`, true);
-            xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-            xhr.setRequestHeader('Content-Type', 'application/json');
-            
-            xhr.onload = function() {
-                setLoading(false);
-                
-                if (xhr.status >= 200 && xhr.status < 300) {
-                    try {
-                        const data = JSON.parse(xhr.responseText);
-                        console.log('Fetched prescriptions:', data);
-                        
-                        if (Array.isArray(data)) {
-                            console.log('Found', data.length, 'prescriptions');
-                            if (data.length > 0 && data[0]) {
-                                console.log('Sample prescription:', {
-                                    id: data[0]._id,
-                                    doctorId: data[0].doctorId,
-                                    medicines: data[0].medicines,
-                                    duration: data[0].duration,
-                                    createdAt: data[0].createdAt
-                                });
-                            } else {
-                                console.log('No prescriptions found');
-                            }
-                            
-                            // Successfully set the prescriptions and clear any errors
-                            setActivePrescriptions(data);
-                            setError(null);
-                        } else {
-                            console.error('Invalid data format, expected array');
-                            setActivePrescriptions([]);
-                        }
-                    } catch (parseError) {
-                        console.error('Error parsing JSON response:', parseError);
-                        setError('Error parsing prescription data');
-                        setActivePrescriptions([]);
+            // Use fetch instead of XMLHttpRequest for better error handling
+            try {
+                const response = await fetch(`/prescription/patient/${patientId}/active`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json'
                     }
-                } else if (xhr.status === 401) {
+                });
+                
+                console.log('Prescription response status:', response.status);
+                
+                if (response.status === 401) {
                     console.error('Unauthorized access. Redirecting to login.');
                     localStorage.removeItem('patientToken');
                     navigate('/login/patient');
-                } else {
-                    console.error('Error response:', xhr.status, xhr.statusText, xhr.responseText);
-                    setError('Failed to load prescriptions. Please try again later.');
+                    return;
+                }
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Error response:', errorText);
+                    throw new Error(`API error: ${response.status} ${response.statusText}`);
+                }
+                
+                // Get the response as text first
+                const responseText = await response.text();
+                console.log('Response text:', responseText);
+                
+                // Check if the response is empty
+                if (!responseText || responseText.trim() === '') {
+                    console.log('Empty response received');
+                    setActivePrescriptions([]);
+                    setError(null);
+                    return;
+                }
+                
+                // Try to parse the JSON
+                try {
+                    const data = JSON.parse(responseText);
+                    console.log('Fetched prescriptions:', data);
+                    
+                    if (Array.isArray(data)) {
+                        console.log('Found', data.length, 'prescriptions');
+                        if (data.length > 0 && data[0]) {
+                            console.log('Sample prescription:', {
+                                id: data[0]._id,
+                                doctorId: data[0].doctorId,
+                                medicines: data[0].medicines,
+                                duration: data[0].duration,
+                                createdAt: data[0].createdAt
+                            });
+                        } else {
+                            console.log('No prescriptions found');
+                        }
+                        
+                        // Successfully set the prescriptions and clear any errors
+                        setActivePrescriptions(data);
+                        setError(null);
+                    } else {
+                        console.error('Invalid data format, expected array');
+                        setActivePrescriptions([]);
+                    }
+                } catch (parseError) {
+                    console.error('Error parsing JSON response:', parseError);
+                    setError('Error parsing prescription data');
                     setActivePrescriptions([]);
                 }
-            };
-            
-            xhr.onerror = function() {
-                console.error('Network error occurred');
-                setLoading(false);
-                setError('Network error. Please check your connection and try again.');
+            } catch (err) {
+                console.error('Error fetching prescriptions:', err);
+                setError('Failed to load prescriptions. Please try again later.');
                 setActivePrescriptions([]);
-            };
-            
-            xhr.send();
+            } finally {
+                setLoading(false);
+            }
             
             // Return early since we're using callbacks
             return;
@@ -516,7 +531,7 @@ const ViewPrescriptions = () => {
                         </div>
                     ) : error ? (
                         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-6">
-                            <p>{error}</p>
+                            <p>Error parsing prescription data. Please try again later.</p>
                             <button 
                                 onClick={fetchActivePrescriptions}
                                 className="mt-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"

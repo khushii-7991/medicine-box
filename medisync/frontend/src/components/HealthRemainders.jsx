@@ -777,7 +777,7 @@ const HealthRemainders = () => {
                                                         />
                                                     </div>
                                                     
-                                                    {prescriptionMedicines.find(m => m.medicine === selectedMedicine)?.dosage.includes('2 Times') && (
+                                                    {prescriptionMedicines.find(m => m.medicine === selectedMedicine)?.dosage?.includes('2 Times') && (
                                                         <div>
                                                             <label className="block text-sm font-medium text-gray-700 mb-1">Evening Time</label>
                                                             <input

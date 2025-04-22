@@ -37,19 +37,19 @@ const MyAppointments = () => {
     };
 
     return (
-        <div class="bg-gray-50 min-h-screen font-sans">
-            <nav class="bg-green-900 text-white p-5 flex justify-between items-center">
-                <h1 class="text-2xl font-bold">📅 My Appointments</h1>
-                <div class="space-x-4">
-                    <a href="/book-appointment" class="bg-white text-green-900 px-4 py-2 rounded-lg hover:bg-green-50 transition">
+        <div className="bg-gray-50 min-h-screen font-sans">
+            <nav className="bg-green-900 text-white p-5 flex justify-between items-center">
+                <h1 className="text-2xl font-bold">📅 My Appointments</h1>
+                <div className="space-x-4">
+                    <a href="/book-appointment" className="bg-white text-green-900 px-4 py-2 rounded-lg hover:bg-green-50 transition">
                         Book New Appointment
                     </a>
-                    <a href="/" class="text-sm hover:underline">Back to Dashboard</a>
+                    <a href="/" className="text-sm hover:underline">Back to Dashboard</a>
                 </div>
             </nav>
 
-            <div class="max-w-6xl mx-auto py-12 px-6">
-                <div class="bg-white rounded-2xl shadow-xl p-6">
+            <div className="max-w-6xl mx-auto py-12 px-6">
+                <div className="bg-white rounded-2xl shadow-xl p-6">
                     <div class="flex justify-between items-center mb-6">
                         <h2 class="text-2xl font-bold text-green-800">Upcoming and Past Appointments</h2>
                         <a href="/book-appointment" class="text-green-600 hover:text-green-800 font-medium">

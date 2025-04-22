@@ -197,30 +197,30 @@ const UploadReports = () => {
                                 />
                             </div>
 
-                            <div class="relative">
-                                <label class="block text-gray-700">Report Category</label>
-                                <div class="relative">
+                            <div className="relative">
+                                <label className="block text-gray-700">Report Category</label>
+                                <div className="relative">
                                     <input
                                         type="text"
                                         value={categorySearch}
                                         placeholder="Select report category..."
                                         onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
-                                        class="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-600 cursor-pointer"
+                                        className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-600 cursor-pointer"
                                         readOnly
                                     />
                                     {showCategoryDropdown && (
-                                        <div class="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg">
-                                            <div class="p-2 border-b">
+                                        <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg">
+                                            <div className="p-2 border-b">
                                                 <input
                                                     type="text"
                                                     placeholder="Search category..."
                                                     value={categorySearch}
                                                     onChange={(e) => setCategorySearch(e.target.value)}
-                                                    class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-green-600"
+                                                    className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-green-600"
                                                     onClick={(e) => e.stopPropagation()}
                                                 />
                                             </div>
-                                            <div class="max-h-60 overflow-y-auto">
+                                            <div className="max-h-60 overflow-y-auto">
                                                 {filteredCategories.map((category) => (
                                                     <div
                                                         key={category.id}
@@ -229,10 +229,10 @@ const UploadReports = () => {
                                                             setCategorySearch(category.name);
                                                             setShowCategoryDropdown(false);
                                                         }}
-                                                        class="p-3 hover:bg-green-50 cursor-pointer"
+                                                        className="p-3 hover:bg-green-50 cursor-pointer"
                                                     >
-                                                        <div class="font-medium">{category.name}</div>
-                                                        <div class="text-sm text-gray-600">{category.description}</div>
+                                                        <div className="font-medium">{category.name}</div>
+                                                        <div className="text-sm text-gray-600">{category.description}</div>
                                                     </div>
                                                 ))}
                                             </div>
@@ -243,9 +243,9 @@ const UploadReports = () => {
 
                             {/* Available Doctors Section - Moved here */}
                             {selectedCategory && (
-                                <div class="space-y-3">
-                                    <label class="block text-gray-700">Available Doctors</label>
-                                    <div class="space-y-3">
+                                <div className="space-y-3">
+                                    <label className="block text-gray-700">Available Doctors</label>
+                                    <div className="space-y-3">
                                         {availableDoctors.map((doctor) => (
                                             <div
                                                 key={doctor.id}

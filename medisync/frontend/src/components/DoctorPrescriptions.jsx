@@ -38,10 +38,10 @@ const DoctorPrescriptions = () => {
             console.log('Fetching prescriptions for patient ID:', patientId);
             
             // Fetch active prescriptions for this patient
-            const response = await fetch(`http://localhost:3000/prescription/patient/${patientId}/active`, {
+            const response = await fetch(`/prescription/patient/${patientId}/active`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
+                    'Accept': 'application/json'
                 }
             });
             
@@ -60,27 +60,44 @@ const DoctorPrescriptions = () => {
                 throw new Error(`API error: ${response.status} ${response.statusText}`);
             }
             
-            const data = await response.json();
-            console.log('Fetched prescriptions:', data);
+            // Get the response as text first
+            const responseText = await response.text();
+            console.log('Response text:', responseText);
             
-            if (Array.isArray(data) && data.length > 0) {
-                console.log('Found', data.length, 'prescriptions');
-                // Log the first prescription for debugging
-                if (data[0]) {
-                    console.log('Sample prescription:', {
-                        id: data[0]._id,
-                        doctorId: data[0].doctorId,
-                        medicines: data[0].medicines,
-                        duration: data[0].duration,
-                        createdAt: data[0].createdAt
-                    });
-                }
-            } else {
-                console.log('No prescriptions found or invalid data format');
+            // Check if the response is empty
+            if (!responseText || responseText.trim() === '') {
+                console.log('Empty response received');
+                setActivePrescriptions([]);
+                return;
             }
             
-            setActivePrescriptions(data);
-            
+            // Try to parse the JSON
+            try {
+                const data = JSON.parse(responseText);
+                console.log('Fetched prescriptions:', data);
+                
+                if (Array.isArray(data) && data.length > 0) {
+                    console.log('Found', data.length, 'prescriptions');
+                    // Log the first prescription for debugging
+                    if (data[0]) {
+                        console.log('Sample prescription:', {
+                            id: data[0]._id,
+                            doctorId: data[0].doctorId,
+                            medicines: data[0].medicines,
+                            duration: data[0].duration,
+                            createdAt: data[0].createdAt
+                        });
+                    }
+                    setActivePrescriptions(data);
+                } else {
+                    console.log('No prescriptions found or invalid data format');
+                    setActivePrescriptions([]);
+                }
+            } catch (parseError) {
+                console.error('Error parsing JSON response:', parseError);
+                setError('Error parsing prescription data');
+                setActivePrescriptions([]);
+            }
         } catch (err) {
             console.error('Error fetching prescriptions:', err);
             setError('Failed to load prescriptions. Please try again later.');

@@ -20,7 +20,7 @@ const Doctor = () => {
     useEffect(() => {
         const fetchDoctorProfile = async () => {
             try {
-                const response = await fetch('/api/doctor/profile', {
+                const response = await fetch('/doctor/profile', {
                     headers: {
                         'Authorization': `Bearer ${localStorage.getItem('doctorToken')}`
                     }
