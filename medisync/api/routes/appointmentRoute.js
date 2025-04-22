@@ -4,25 +4,42 @@ const Appointment = require('../models/Appointment');
 const Doctor = require('../models/Doctor');
 const Patient = require('../models/Patient');
 const auth = require('../middleware/auth');
+const { createAppointmentNotifications } = require('../controller/notificationController');
 
 // POST /appointment/create - Create a new appointment request
 router.post('/create', auth, async (req, res) => {
     try {
-        console.log('Appointment creation request body:', req.body);
-        console.log('User making request:', req.user);
+        console.log('User data from token:', req.user);
+        console.log('Request body:', req.body);
         
         const { doctorId, patientId, date, time, isFlexibleTiming, reason } = req.body;
         let finalDoctorId = doctorId;
         let finalPatientId = patientId;
 
-        // Determine user role (doctor or patient)
-        const userRole = req.user.role || 'unknown';
-        console.log('User role:', userRole);
-        
-        // Check if request is from doctor or patient
-        if (userRole === 'doctor' || req.user.speciality) {
-            // Request is from doctor
-            console.log('Request is from doctor with ID:', req.user.id);
+        // Check if the request explicitly states it's from a doctor
+        if (req.body.createdBy === 'doctor') {
+            console.log('Request explicitly marked as from doctor');
+            
+            // Use the doctor ID from the token
+            finalDoctorId = req.user.id;
+            console.log('Using doctor ID from token:', finalDoctorId);
+            
+            // Validate patient exists
+            if (!patientId) {
+                return res.status(400).json({ message: 'Patient ID is required when doctor creates appointment' });
+            }
+            
+            console.log('Validating patient ID:', patientId);
+            const patient = await Patient.findById(patientId);
+            if (!patient) {
+                return res.status(404).json({ message: `Patient with ID ${patientId} not found` });
+            }
+            console.log('Patient found:', patient.name);
+            finalPatientId = patientId;
+            
+        // If doctorId is provided in the request and matches the user's ID, it's a doctor
+        } else if (doctorId && doctorId === req.user.id) {
+            console.log('Doctor ID in request matches user ID');
             finalDoctorId = req.user.id;
             
             // Validate patient exists
@@ -37,22 +54,60 @@ router.post('/create', auth, async (req, res) => {
             }
             console.log('Patient found:', patient.name);
             finalPatientId = patientId;
+            
+        // Check if user is a doctor by role or by checking the database
         } else {
-            // Request is from patient
-            console.log('Request is from patient with ID:', req.user.id);
-            finalPatientId = req.user.id;
+            let isDoctor = req.user.role === 'doctor';
             
-            // Validate doctor exists
-            if (!doctorId) {
-                return res.status(400).json({ message: 'Doctor ID is required when patient creates appointment' });
+            if (!isDoctor) {
+                try {
+                    // Check if user exists in the Doctor collection
+                    const doctorCheck = await Doctor.findById(req.user.id);
+                    if (doctorCheck) {
+                        console.log('User found in Doctor collection:', doctorCheck.name);
+                        isDoctor = true;
+                    }
+                } catch (error) {
+                    console.log('Error checking doctor:', error.message);
+                }
             }
             
-            const doctor = await Doctor.findById(doctorId);
-            if (!doctor) {
-                return res.status(404).json({ message: 'Doctor not found' });
+            console.log('Is user a doctor based on role/DB check?', isDoctor);
+            
+            if (isDoctor) {
+                // Request is from doctor
+                console.log('Request is from doctor with ID:', req.user.id);
+                finalDoctorId = req.user.id;
+                
+                // Validate patient exists
+                if (!patientId) {
+                    return res.status(400).json({ message: 'Patient ID is required when doctor creates appointment' });
+                }
+                
+                console.log('Validating patient ID:', patientId);
+                const patient = await Patient.findById(patientId);
+                if (!patient) {
+                    return res.status(404).json({ message: `Patient with ID ${patientId} not found` });
+                }
+                console.log('Patient found:', patient.name);
+                finalPatientId = patientId;
+            } else {
+                // Request is from patient
+                console.log('Request is from patient with ID:', req.user.id);
+                finalPatientId = req.user.id;
+                
+                // Validate doctor exists
+                if (!doctorId) {
+                    return res.status(400).json({ message: 'Doctor ID is required when patient creates appointment' });
+                }
+                
+                const doctor = await Doctor.findById(doctorId);
+                if (!doctor) {
+                    return res.status(404).json({ message: 'Doctor not found' });
+                }
+                console.log('Doctor found:', doctor.name);
+                finalDoctorId = doctorId;
             }
-            console.log('Doctor found:', doctor.name);
-            finalDoctorId = doctorId;
         }
 
         // Validate required fields
@@ -90,6 +145,23 @@ router.post('/create', auth, async (req, res) => {
             date: populatedAppointment.date,
             status: populatedAppointment.status
         });
+        
+        // Create notifications for the appointment
+        try {
+            console.log('Creating appointment notifications with populated data:', {
+                id: populatedAppointment._id,
+                doctor: populatedAppointment.doctor._id,
+                patient: populatedAppointment.patient._id,
+                date: populatedAppointment.date,
+                time: populatedAppointment.time
+            });
+            
+            await createAppointmentNotifications(populatedAppointment, 'created');
+            console.log('Appointment notifications created successfully');
+        } catch (notificationErr) {
+            console.error('Error creating appointment notifications:', notificationErr);
+            // Continue even if notification creation fails
+        }
         
         res.status(201).json({ 
             message: 'Appointment request created successfully',
@@ -154,21 +226,32 @@ router.get('/patient', auth, async (req, res) => {
 router.put('/:id/status', auth, async (req, res) => {
     try {
         const { status, notes } = req.body;
-        const appointmentId = req.params.id;
-        const doctorId = req.user.id;
-
-        // Find the appointment and check if it belongs to this doctor
-        const appointment = await Appointment.findById(appointmentId);
+        
+        if (!status) {
+            return res.status(400).json({ message: 'Status is required' });
+        }
+        
+        // Validate status value
+        const validStatuses = ['pending', 'confirmed', 'declined', 'completed', 'canceled'];
+        if (!validStatuses.includes(status)) {
+            return res.status(400).json({ 
+                message: 'Invalid status value', 
+                validValues: validStatuses 
+            });
+        }
+        
+        const appointment = await Appointment.findById(req.params.id);
         
         if (!appointment) {
             return res.status(404).json({ message: 'Appointment not found' });
         }
         
-        if (appointment.doctor.toString() !== doctorId) {
+        // Only doctors can update appointment status
+        if (appointment.doctor.toString() !== req.user.id) {
             return res.status(403).json({ message: 'Not authorized to update this appointment' });
         }
-
-        // Update appointment status
+        
+        // Update appointment
         appointment.status = status;
         if (notes) {
             appointment.notes = notes;
@@ -176,13 +259,27 @@ router.put('/:id/status', auth, async (req, res) => {
         
         await appointment.save();
         
+        // Populate patient and doctor info before returning
+        const updatedAppointment = await Appointment.findById(appointment._id)
+            .populate('patient', 'name email age')
+            .populate('doctor', 'name speciality consultationFee');
+        
+        // Create notifications based on the new status
+        if (status === 'confirmed') {
+            await createAppointmentNotifications(updatedAppointment, 'confirmed');
+        } else if (status === 'declined') {
+            await createAppointmentNotifications(updatedAppointment, 'declined');
+        } else if (status === 'completed') {
+            await createAppointmentNotifications(updatedAppointment, 'completed');
+        }
+        
         res.json({ 
             message: 'Appointment status updated successfully',
-            appointment
+            appointment: updatedAppointment
         });
     } catch (err) {
         console.error('Error updating appointment status:', err);
-        res.status(500).json({ message: 'Server error', error: err.message });
+        res.status(500).json({ message: 'Error updating appointment status', error: err.message });
     }
 });
 
@@ -217,6 +314,39 @@ router.put('/:id/cancel', auth, async (req, res) => {
     }
 });
 
+// GET /appointment/today-tomorrow - Get appointments for today and tomorrow for a doctor
+router.get('/today-tomorrow', auth, async (req, res) => {
+    try {
+        const doctorId = req.user.id;
+        
+        // Get today's date at the start of the day
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        // Get tomorrow's date at the end of the day
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(23, 59, 59, 999);
+        
+        console.log(`Fetching appointments for doctor ${doctorId} between ${today.toISOString()} and ${tomorrow.toISOString()}`);
+        
+        // Find appointments for today and tomorrow
+        const appointments = await Appointment.find({
+            doctor: doctorId,
+            date: { $gte: today, $lte: tomorrow }
+        })
+        .populate('patient', 'name email age')
+        .sort({ date: 1, time: 1 });
+        
+        console.log(`Found ${appointments.length} appointments for today and tomorrow`);
+        
+        res.json(appointments);
+    } catch (err) {
+        console.error('Error fetching today\'s and tomorrow\'s appointments:', err);
+        res.status(500).json({ message: 'Error fetching appointments', error: err.message });
+    }
+});
+
 // GET /appointment/:id - Get appointment details
 router.get('/:id', auth, async (req, res) => {
     try {
@@ -240,6 +370,36 @@ router.get('/:id', auth, async (req, res) => {
         res.json(appointment);
     } catch (err) {
         console.error('Error fetching appointment details:', err);
+        res.status(500).json({ message: 'Server error', error: err.message });
+    }
+});
+
+// DELETE /appointment/:id - Delete an appointment (for doctors)
+router.delete('/:id', auth, async (req, res) => {
+    try {
+        const appointmentId = req.params.id;
+        const doctorId = req.user.id;
+
+        // Find the appointment and check if it belongs to this doctor
+        const appointment = await Appointment.findById(appointmentId);
+        
+        if (!appointment) {
+            return res.status(404).json({ message: 'Appointment not found' });
+        }
+        
+        if (appointment.doctor.toString() !== doctorId) {
+            return res.status(403).json({ message: 'Not authorized to delete this appointment' });
+        }
+
+        // Delete the appointment
+        await Appointment.findByIdAndDelete(appointmentId);
+        
+        res.json({ 
+            message: 'Appointment deleted successfully',
+            appointmentId
+        });
+    } catch (err) {
+        console.error('Error deleting appointment:', err);
         res.status(500).json({ message: 'Server error', error: err.message });
     }
 });

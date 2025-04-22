@@ -42,7 +42,7 @@ router.post('/login', async (req, res) => {
         const isMatch = await bcrypt.compare(password, doctor.password);
         if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
 
-        const token = jwt.sign({ id: doctor._id }, 'your_jwt_secret', { expiresIn: '7d' });
+        const token = jwt.sign({ id: doctor._id, role: 'doctor' }, 'your_jwt_secret', { expiresIn: '7d' });
 
         res.json({ token, user: { id: doctor._id, name: doctor.name, email: doctor.email } });
     } catch (err) {
@@ -121,6 +121,24 @@ router.get('/search', async (req, res) => {
     } catch (err) {
         console.error('Error searching doctors:', err);
         res.status(500).json({ message: 'Error searching doctors' });
+    }
+});
+
+// GET /doctor/profile - Get doctor profile information
+router.get('/profile', auth, async (req, res) => {
+    try {
+        const doctorId = req.user.id;
+        console.log('Fetching profile for doctor ID:', doctorId);
+        
+        const doctor = await Doctor.findById(doctorId).select('-password');
+        if (!doctor) {
+            return res.status(404).json({ message: 'Doctor not found' });
+        }
+        
+        res.json(doctor);
+    } catch (err) {
+        console.error('Error fetching doctor profile:', err);
+        res.status(500).json({ message: 'Server error', error: err.message });
     }
 });
 
