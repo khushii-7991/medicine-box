@@ -9,126 +9,160 @@ const MedicineNotification = () => {
 
     // Test function to check localStorage data
     const checkLocalStorageData = () => {
-        const healthRemainders = JSON.parse(localStorage.getItem('healthRemainders') || '[]');
-        console.log('Health Remainders in localStorage:', healthRemainders);
-        
-        if (healthRemainders.length === 0) {
-            console.log('No medicines found in healthRemainders');
-            // Add a test medicine if none exists
-            const testMedicine = {
-                id: 'test-1',
-                medicineName: 'Test Medicine',
-                date: new Date().toISOString(),
-                completed: false,
-                time: '10:00'
-            };
-            localStorage.setItem('healthRemainders', JSON.stringify([testMedicine]));
-            console.log('Added test medicine:', testMedicine);
+        try {
+            const healthRemainders = JSON.parse(localStorage.getItem('healthRemainders') || '[]');
+            console.log('Health Remainders in localStorage:', healthRemainders);
+            
+            if (healthRemainders.length === 0) {
+                console.log('No medicines found in healthRemainders');
+                // Add a test medicine if none exists
+                const now = new Date();
+                const testMedicine = {
+                    id: 'test-1',
+                    medicineName: 'Test Medicine',
+                    date: now.toISOString(), // Store full ISO string with date and time
+                    completed: false,
+                    // No separate time property needed as it's included in the date
+                };
+                localStorage.setItem('healthRemainders', JSON.stringify([testMedicine]));
+                console.log('Added test medicine:', testMedicine);
+            }
+        } catch (error) {
+            console.error('Error checking localStorage data:', error);
+            // Reset corrupted data
+            localStorage.setItem('healthRemainders', '[]');
         }
     };
 
     const getTodaysMedicines = () => {
-        const today = new Date();
-        const todayString = today.toDateString();
+        try {
+            const today = new Date();
+            // Reset hours to compare just the date
+            const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+            const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
 
-        // Get medicines from healthRemainders
-        const healthRemainders = JSON.parse(localStorage.getItem('healthRemainders') || '[]');
-        console.log('Health Remainders:', healthRemainders);
+            // Get medicines from healthRemainders
+            const healthRemainders = JSON.parse(localStorage.getItem('healthRemainders') || '[]');
+            console.log('Health Remainders:', healthRemainders);
 
-        // Find medicines scheduled for today
-        const todaysSchedule = healthRemainders.filter(medicine => {
-            const medicineDate = new Date(medicine.date);
-            const isToday = medicineDate.toDateString() === todayString;
-            const isNotCompleted = !medicine.completed;
-            console.log('Medicine:', medicine.medicineName, 'Is today:', isToday, 'Not completed:', isNotCompleted);
-            return isToday && isNotCompleted;
-        });
+            // Find medicines scheduled for today
+            const todaysSchedule = healthRemainders.filter(medicine => {
+                if (!medicine.date) return false;
+                
+                const medicineDate = new Date(medicine.date);
+                const isToday = medicineDate >= todayStart && medicineDate <= todayEnd;
+                const isNotCompleted = !medicine.completed;
+                console.log('Medicine:', medicine.medicineName, 'Is today:', isToday, 'Not completed:', isNotCompleted);
+                return isToday && isNotCompleted;
+            });
 
-        console.log('Today\'s Schedule:', todaysSchedule);
+            console.log('Today\'s Schedule:', todaysSchedule);
 
-        // Sort medicines by time
-        todaysSchedule.sort((a, b) => {
-            const timeA = new Date(a.date).getTime();
-            const timeB = new Date(b.date).getTime();
-            return timeA - timeB;
-        });
+            // Sort medicines by time
+            todaysSchedule.sort((a, b) => {
+                const timeA = new Date(a.date).getTime();
+                const timeB = new Date(b.date).getTime();
+                return timeA - timeB;
+            });
 
-        setTodaysMedicines(todaysSchedule);
+            setTodaysMedicines(todaysSchedule);
+        } catch (error) {
+            console.error('Error getting today\'s medicines:', error);
+            setTodaysMedicines([]);
+        }
     };
 
     const checkPendingMedicines = () => {
-        const now = new Date();
-        console.log('Current time:', now);
+        try {
+            const now = new Date();
+            console.log('Current time:', now);
 
-        // Get medicines from healthRemainders
-        const healthRemainders = JSON.parse(localStorage.getItem('healthRemainders') || '[]');
+            // Get medicines from healthRemainders
+            const healthRemainders = JSON.parse(localStorage.getItem('healthRemainders') || '[]');
 
-        // Find medicines that are due now
-        const dueMedicines = healthRemainders.filter(medicine => {
-            if (!medicine.date) {
-                console.log('No date for medicine:', medicine);
-                return false;
+            // Find medicines that are due now
+            const dueMedicines = healthRemainders.filter(medicine => {
+                if (!medicine.date) {
+                    console.log('No date for medicine:', medicine);
+                    return false;
+                }
+
+                try {
+                    const medicineTime = new Date(medicine.date);
+                    console.log('Medicine:', medicine.medicineName, 'Time:', medicineTime);
+
+                    // Check if the medicine's scheduled time has passed
+                    const timeDifference = now - medicineTime;
+                    console.log('Time difference (ms):', timeDifference);
+
+                    // Medicine is due if time has passed and it's not completed
+                    const isDue = timeDifference > 0 && !medicine.completed;
+                    console.log('Is due:', isDue);
+                    return isDue;
+                } catch (dateError) {
+                    console.error('Error parsing medicine date:', dateError);
+                    return false;
+                }
+            });
+
+            console.log('Due medicines:', dueMedicines);
+
+            if (dueMedicines.length > 0) {
+                console.log('Setting pending medicines and showing prompt');
+                setPendingMedicines(dueMedicines);
+                setCurrentMedicinePrompt(dueMedicines[0]);
+                setShowMedicinePrompt(true);
+            } else {
+                console.log('No due medicines found');
             }
-
-            const medicineTime = new Date(medicine.date);
-            console.log('Medicine:', medicine.medicineName, 'Time:', medicineTime);
-
-            // Check if the medicine's scheduled time has passed
-            const timeDifference = now - medicineTime;
-            console.log('Time difference (ms):', timeDifference);
-
-            const isDue = timeDifference > 0 && !medicine.completed;
-            console.log('Is due:', isDue);
-            return isDue;
-        });
-
-        console.log('Due medicines:', dueMedicines);
-
-        if (dueMedicines.length > 0) {
-            console.log('Setting pending medicines and showing prompt');
-            setPendingMedicines(dueMedicines);
-            setCurrentMedicinePrompt(dueMedicines[0]);
-            setShowMedicinePrompt(true);
-        } else {
-            console.log('No due medicines found');
+        } catch (error) {
+            console.error('Error checking pending medicines:', error);
         }
     };
 
     const handleMedicineStatus = (medicine, status) => {
-        console.log('Handling medicine status:', medicine, status);
-        
-        // Update healthRemainders data
-        const healthRemainders = JSON.parse(localStorage.getItem('healthRemainders') || '[]');
-        const updatedHealthRemainders = healthRemainders.map(remainder => {
-            if (remainder.id === medicine.id) {
-                return {
-                    ...remainder,
-                    completed: status === 'taken',
-                    status: status === 'taken' ? 'completed' : 'missed',
-                    lastUpdated: new Date().toISOString()
-                };
-            }
-            return remainder;
-        });
-        localStorage.setItem('healthRemainders', JSON.stringify(updatedHealthRemainders));
+        try {
+            console.log('Handling medicine status:', medicine, status);
+            
+            // Update healthRemainders data
+            const healthRemainders = JSON.parse(localStorage.getItem('healthRemainders') || '[]');
+            const updatedHealthRemainders = healthRemainders.map(remainder => {
+                if (remainder.id === medicine.id) {
+                    return {
+                        ...remainder,
+                        completed: status === 'taken',
+                        status: status === 'taken' ? 'completed' : 'missed',
+                        lastUpdated: new Date().toISOString()
+                    };
+                }
+                return remainder;
+            });
+            localStorage.setItem('healthRemainders', JSON.stringify(updatedHealthRemainders));
 
-        // Update local state
-        setTodaysMedicines(prev => prev.filter(m => m.id !== medicine.id));
-        setPendingMedicines(prev => prev.filter(m => m.id !== medicine.id));
-        setShowMedicinePrompt(false);
-        setCurrentMedicinePrompt(null);
+            // Update local state
+            setTodaysMedicines(prev => prev.filter(m => m.id !== medicine.id));
+            setPendingMedicines(prev => prev.filter(m => m.id !== medicine.id));
+            setShowMedicinePrompt(false);
+            setCurrentMedicinePrompt(null);
+        } catch (error) {
+            console.error('Error handling medicine status:', error);
+        }
     };
 
     // Force show notification for testing
     const forceShowNotification = () => {
-        const testNotification = {
-            id: 'test-notification',
-            medicineName: 'Test Medicine',
-            date: new Date().toISOString(),
-            completed: false
-        };
-        setCurrentMedicinePrompt(testNotification);
-        setShowMedicinePrompt(true);
+        try {
+            const testNotification = {
+                id: 'test-notification',
+                medicineName: 'Test Medicine',
+                date: new Date().toISOString(),
+                completed: false
+            };
+            setCurrentMedicinePrompt(testNotification);
+            setShowMedicinePrompt(true);
+        } catch (error) {
+            console.error('Error showing test notification:', error);
+        }
     };
 
     useEffect(() => {

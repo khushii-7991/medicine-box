@@ -19,6 +19,7 @@ import {
     CardActionArea,
     CardMedia,
     CardActions,
+    MenuItem
 } from '@mui/material';
 import {
     LocalHospital as HospitalIcon,
@@ -36,6 +37,7 @@ import {
     People as PeopleIcon,
     Dashboard as DashboardIcon,
 } from '@mui/icons-material';
+import DoctorSittingHours from './DoctorSittingHours';
 
 const defaultData = {
     name: '',
@@ -322,6 +324,11 @@ const DoctorProfile = () => {
                         </Card>
                     </Grid>
                 </Grid>
+
+                {/* Sitting Hours Section */}
+                <Box sx={{ mt: 4 }}>
+                    <DoctorSittingHours />
+                </Box>
 
                 {/* Main Features Section */}
                 <Typography variant="h5" sx={{ fontWeight: 'bold', mt: 6, mb: 3 }}>
