@@ -58,7 +58,6 @@ const Layout = ({ children, userType }) => {
     { path: '/patient', icon: <FaHome />, label: 'Dashboard', exact: true },
     { path: '/profile', icon: <FaUser />, label: 'Profile' },
     { path: '/view-prescriptions', icon: <FaFileMedical />, label: 'Prescriptions' },
-    { path: '/medication-schedule', icon: <FaCalendarAlt />, label: 'Schedule' },
     { path: '/book-appointment', icon: <FaBook />, label: 'Book Appointment' },
     { path: '/upload-reports', icon: <FaUpload />, label: 'Upload Reports' },
     { path: '/health-reminders', icon: <FaBell />, label: 'Health Reminders' },

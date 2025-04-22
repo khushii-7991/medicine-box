@@ -160,8 +160,20 @@ const BookAppointment = () => {
             setLoading(true);
             try {
                 // Fetch doctors from backend based on location and specialization
+                const token = localStorage.getItem('patientToken');
+                if (!token) {
+                    setError('You must be logged in to search for doctors');
+                    setLoading(false);
+                    return;
+                }
+
                 const response = await axios.get(
-                    `http://localhost:3000/doctor/search?speciality=${selectedCategory}&city=${city.name}`
+                    `http://localhost:3000/doctor/search?speciality=${selectedCategory}&city=${city.name}`,
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    }
                 );
                 console.log('Raw doctor data from API:', response.data);
                 
@@ -203,7 +215,12 @@ const BookAppointment = () => {
             setLoading(true);
             try {
                 const response = await axios.get(
-                    `http://localhost:3000/doctor/search?speciality=${category.name}&city=${selectedCity}`
+                    `http://localhost:3000/doctor/search?speciality=${category.name}&city=${selectedCity}`,
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('patientToken')}`
+                        }
+                    }
                 );
                 console.log('Raw doctor data from API:', response.data);
                 
@@ -348,8 +365,8 @@ const BookAppointment = () => {
             // Show success message
             toast.success('Appointment request sent successfully!');
             
-            // Redirect to patient dashboard
-            navigate('/patient');
+            // Redirect to my appointments page
+            navigate('/my-appointments');
         } catch (err) {
             setLoading(false);
             setError(err.response?.data?.message || 'Failed to book appointment');
@@ -388,22 +405,12 @@ const BookAppointment = () => {
                                 type="text"
                                 value={categorySearch}
                                 placeholder="Select doctor category..."
+                                onChange={(e) => setCategorySearch(e.target.value)}
                                 onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
                                 class="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-600 cursor-pointer"
-                                readOnly
                             />
                             {showCategoryDropdown && (
                                 <div class="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg">
-                                    <div class="p-2 border-b">
-                                        <input
-                                            type="text"
-                                            placeholder="Search category..."
-                                            value={categorySearch}
-                                            onChange={(e) => setCategorySearch(e.target.value)}
-                                            class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-green-600"
-                                            onClick={(e) => e.stopPropagation()}
-                                        />
-                                    </div>
                                     <div class="max-h-96 overflow-y-auto">
                                         {Object.entries(
                                             filteredCategories.reduce((acc, category) => {
@@ -457,33 +464,31 @@ const BookAppointment = () => {
                                 type="text"
                                 value={stateSearch}
                                 placeholder="Select state..."
+                                onChange={(e) => setStateSearch(e.target.value)}
                                 onClick={() => setShowStateDropdown(!showStateDropdown)}
                                 disabled={!selectedCountry}
                                 class="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-600 cursor-pointer disabled:bg-gray-100"
-                                readOnly
                             />
                             {showStateDropdown && selectedCountry && (
                                 <div class="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg">
-                                    <div class="p-2 border-b">
-                                        <input
-                                            type="text"
-                                            placeholder="Search state..."
-                                            value={stateSearch}
-                                            onChange={(e) => setStateSearch(e.target.value)}
-                                            class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-green-600"
-                                            onClick={(e) => e.stopPropagation()}
-                                        />
-                                    </div>
                                     <div class="max-h-60 overflow-y-auto">
-                                        {filteredStates.map((state) => (
-                                            <div
-                                                key={state.iso2}
-                                                onClick={() => handleStateSelect(state)}
-                                                class="p-3 hover:bg-green-50 cursor-pointer"
-                                            >
-                                                {state.name}
+                                        {loading ? (
+                                            <div class="p-3 text-center">
+                                                <div class="inline-block animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-green-500"></div>
                                             </div>
-                                        ))}
+                                        ) : filteredStates.length > 0 ? (
+                                            filteredStates.map((state) => (
+                                                <div
+                                                    key={state.iso2}
+                                                    onClick={() => handleStateSelect(state)}
+                                                    class="p-3 hover:bg-green-50 cursor-pointer"
+                                                >
+                                                    {state.name}
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div class="p-3 text-center text-gray-500">No states found</div>
+                                        )}
                                     </div>
                                 </div>
                             )}
@@ -497,33 +502,31 @@ const BookAppointment = () => {
                                 type="text"
                                 value={citySearch}
                                 placeholder={selectedState ? "Select city..." : "Select state first"}
+                                onChange={(e) => setCitySearch(e.target.value)}
                                 onClick={() => selectedState && setShowCityDropdown(!showCityDropdown)}
                                 disabled={!selectedState}
                                 class="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-600 cursor-pointer disabled:bg-gray-100"
-                                readOnly
                             />
-                            {showCityDropdown && selectedState && cities.length > 0 && (
+                            {showCityDropdown && selectedState && (
                                 <div class="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg">
-                                    <div class="p-2 border-b">
-                                        <input
-                                            type="text"
-                                            placeholder="Search city..."
-                                            value={citySearch}
-                                            onChange={(e) => setCitySearch(e.target.value)}
-                                            class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-green-600"
-                                            onClick={(e) => e.stopPropagation()}
-                                        />
-                                    </div>
                                     <div class="max-h-60 overflow-y-auto">
-                                        {filteredCities.map((city) => (
-                                            <div
-                                                key={city.id}
-                                                onClick={() => handleCitySelect(city)}
-                                                class="p-3 hover:bg-green-50 cursor-pointer"
-                                            >
-                                                {city.name}
+                                        {loading ? (
+                                            <div class="p-3 text-center">
+                                                <div class="inline-block animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-green-500"></div>
                                             </div>
-                                        ))}
+                                        ) : filteredCities.length > 0 ? (
+                                            filteredCities.map((city) => (
+                                                <div
+                                                    key={city.id}
+                                                    onClick={() => handleCitySelect(city)}
+                                                    class="p-3 hover:bg-green-50 cursor-pointer"
+                                                >
+                                                    {city.name}
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div class="p-3 text-center text-gray-500">No cities found</div>
+                                        )}
                                     </div>
                                 </div>
                             )}
@@ -596,23 +599,23 @@ const BookAppointment = () => {
                                                     <div className="flex items-center justify-between">
                                                         <h4 className="font-semibold text-lg">{doctor.name || 'Doctor'}</h4>
                                                         <div className="flex items-center">
-                                                        {renderStars(doctor.rating || 4.5)}
-                                                        <span className="ml-1 text-sm text-gray-600">
-                                                            ({doctor.rating || 4.5})
-                                                        </span>
+                                                            {renderStars(doctor.rating || 4.5)}
+                                                            <span className="ml-1 text-sm text-gray-600">
+                                                                ({doctor.rating || 4.5})
+                                                            </span>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                                <p className="text-sm text-gray-600">{doctor.speciality || 'Specialist'}</p>
-                                                <p className="text-sm text-gray-600">
-                                                    {doctor.experience || '0'} years experience • {doctor.hospital?.name || 'Hospital'}
-                                                </p>
-                                                <p className="text-sm text-gray-600">
-                                                    Location: {doctor.city || 'Unknown'}, India
-                                                </p>
-                                                <p className="text-sm text-gray-600">
-                                                    Fee: ₹{doctor.consultationFee || 'Varies'}
-                                                </p>
-                                                <p className="text-sm text-gray-600">Available: {doctor.availability || 'Mon-Fri, 9AM-5PM'}</p>
+                                                    <p className="text-sm text-gray-600">{doctor.speciality || 'Specialist'}</p>
+                                                    <p className="text-sm text-gray-600">
+                                                        {doctor.experience || '0'} years experience • {doctor.hospital?.name || 'Hospital'}
+                                                    </p>
+                                                    <p className="text-sm text-gray-600">
+                                                        Location: {doctor.city || 'Unknown'}, India
+                                                    </p>
+                                                    <p className="text-sm text-gray-600">
+                                                        Fee: ₹{doctor.consultationFee || 'Varies'}
+                                                    </p>
+                                                    <p className="text-sm text-gray-600">Available: {doctor.availability || 'Mon-Fri, 9AM-5PM'}</p>
                                                 </div>
                                             </div>
                                         </div>

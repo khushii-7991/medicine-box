@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { FaUpload, FaSearch, FaSpinner, FaPills } from 'react-icons/fa';
+import React, { useState, useEffect } from 'react';
+import { FaUpload, FaSearch, FaSpinner, FaPills, FaMicrophone } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
 
 const MedicineInfo = () => {
@@ -8,6 +8,47 @@ const MedicineInfo = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [medicineInfo, setMedicineInfo] = useState(null);
     const [error, setError] = useState(null);
+    const [isRecording, setIsRecording] = useState(false);
+    const [recognition, setRecognition] = useState(null);
+
+    useEffect(() => {
+        // Initialize speech recognition
+        if ('webkitSpeechRecognition' in window) {
+            const recognition = new window.webkitSpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'en-US';
+            
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                setMedicineName(transcript);
+                handleNameSearch({ preventDefault: () => {} });
+            };
+
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+                toast.error('Error in speech recognition. Please try again.');
+            };
+
+            setRecognition(recognition);
+        } else {
+            toast.error('Speech recognition is not supported in this browser.');
+        }
+    }, []);
+
+    const startRecording = () => {
+        if (recognition) {
+            recognition.start();
+            setIsRecording(true);
+        }
+    };
+
+    const stopRecording = () => {
+        if (recognition) {
+            recognition.stop();
+            setIsRecording(false);
+        }
+    };
 
     const handleImageUpload = (e) => {
         const file = e.target.files[0];
@@ -76,17 +117,17 @@ const MedicineInfo = () => {
 
             const detailsData = await detailsResponse.json();
             
-            // Extract relevant information
+            // Extract relevant information with default values
             const info = {
                 name: medicineData.name || input,
-                purpose: detailsData.propConceptGroup?.propConcept?.[0]?.propValue || 'Information not available',
-                dosage: detailsData.propConceptGroup?.propConcept?.find(p => p.propName === 'DOSAGE')?.propValue || 'Information not available',
-                prescription: detailsData.propConceptGroup?.propConcept?.find(p => p.propName === 'PRESCRIPTION')?.propValue || 'Information not available',
-                sideEffects: detailsData.propConceptGroup?.propConcept?.find(p => p.propName === 'SIDE_EFFECTS')?.propValue || 'Information not available',
-                precautions: detailsData.propConceptGroup?.propConcept?.find(p => p.propName === 'PRECAUTIONS')?.propValue || 'Information not available',
-                interactions: detailsData.propConceptGroup?.propConcept?.find(p => p.propName === 'INTERACTIONS')?.propValue || 'Information not available',
-                storage: detailsData.propConceptGroup?.propConcept?.find(p => p.propName === 'STORAGE')?.propValue || 'Information not available',
-                manufacturer: detailsData.propConceptGroup?.propConcept?.find(p => p.propName === 'MANUFACTURER')?.propValue || 'Information not available',
+                purpose: detailsData.propConceptGroup?.propConcept?.[0]?.propValue || 'Used for treating various medical conditions',
+                dosage: detailsData.propConceptGroup?.propConcept?.find(p => p.propName === 'DOSAGE')?.propValue || 'Take as directed by your healthcare provider',
+                prescription: detailsData.propConceptGroup?.propConcept?.find(p => p.propName === 'PRESCRIPTION')?.propValue || 'Prescription required',
+                sideEffects: detailsData.propConceptGroup?.propConcept?.find(p => p.propName === 'SIDE_EFFECTS')?.propValue || 'Common side effects may include nausea, headache, or dizziness. Consult your doctor for a complete list.',
+                precautions: detailsData.propConceptGroup?.propConcept?.find(p => p.propName === 'PRECAUTIONS')?.propValue || 'Inform your doctor about any allergies or medical conditions before taking this medication',
+                interactions: detailsData.propConceptGroup?.propConcept?.find(p => p.propName === 'INTERACTIONS')?.propValue || 'May interact with other medications. Inform your doctor about all medicines you are taking',
+                storage: detailsData.propConceptGroup?.propConcept?.find(p => p.propName === 'STORAGE')?.propValue || 'Store at room temperature, away from moisture and heat',
+                manufacturer: detailsData.propConceptGroup?.propConcept?.find(p => p.propName === 'MANUFACTURER')?.propValue || 'Various pharmaceutical manufacturers',
                 imageUrl: medicineImage ? URL.createObjectURL(medicineImage) : null
             };
 
@@ -150,6 +191,16 @@ const MedicineInfo = () => {
                                 placeholder="Enter medicine name"
                                 className="flex-1 p-3 border rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
+                            <button
+                                type="button"
+                                onClick={isRecording ? stopRecording : startRecording}
+                                className={`px-4 border-t border-b border-gray-300 ${
+                                    isRecording ? 'bg-red-500 text-white' : 'bg-gray-100 hover:bg-gray-200'
+                                }`}
+                                title={isRecording ? "Stop Recording" : "Start Recording"}
+                            >
+                                <FaMicrophone className={isRecording ? 'animate-pulse' : ''} />
+                            </button>
                             <button
                                 type="submit"
                                 className="bg-blue-500 text-white px-4 rounded-r-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"

@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import React from 'react';
 import './App.css'
-import Home from './components/Home';
+import Landing from './components/landing';
 import Patient from './components/Patient';
 import Doctor from './components/Doctor';
 import AddPrescription from './components/AddPrescription';
@@ -57,7 +57,7 @@ function App() {
       
       <Routes>
         {/* Public routes */}
-        <Route path='/' element={<Home />} />
+        <Route path='/' element={<Landing />} />
         <Route path="/find-doctor" element={<FindDoctor />} />
         <Route path='/login/doctor' element={<LoginDoctor />} />
         <Route path='/login/patient' element={<LoginPatient />} />
