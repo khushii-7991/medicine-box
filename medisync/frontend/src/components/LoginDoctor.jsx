@@ -76,11 +76,6 @@ const LoginDoctor = () => {
 
       if (response.ok) {
         if (!isSignup) {
-          // Clear any existing patient tokens to ensure only one user type is logged in at a time
-          localStorage.removeItem('patientToken');
-          localStorage.removeItem('patientData');
-          
-          // Set doctor tokens
           localStorage.setItem('doctorToken', data.token);
           localStorage.setItem('doctorData', JSON.stringify(data.user));
           toast.success('Login successful!');

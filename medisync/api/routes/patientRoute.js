@@ -46,42 +46,6 @@ patientRouter.get('/search', auth, async (req, res) => {
     }
 });
 
-// GET /patient/all - Get all patients (for doctors)
-patientRouter.get('/all', auth, async (req, res) => {
-    try {
-        // Check if the user is a doctor
-        if (req.user.role !== 'doctor') {
-            return res.status(403).json({ message: 'Access denied. Only doctors can view all patients.' });
-        }
-        
-        // Find all patients with pagination
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 10;
-        const skip = (page - 1) * limit;
-        
-        const patients = await Patient.find({})
-            .select('name email age gender bloodGroup lastVisit conditions')
-            .skip(skip)
-            .limit(limit)
-            .sort({ name: 1 });
-        
-        // Get total count for pagination
-        const total = await Patient.countDocuments({});
-        
-        res.json({
-            patients,
-            pagination: {
-                total,
-                page,
-                pages: Math.ceil(total / limit)
-            }
-        });
-    } catch (err) {
-        console.error('Error fetching patients:', err);
-        res.status(500).json({ message: 'Error fetching patients', error: err.message });
-    }
-});
-
 // POST /patient/login
 patientRouter.post('/login', async (req, res) => {
     const { email, password } = req.body;
@@ -114,6 +78,22 @@ patientRouter.get('/profile', auth, async (req, res) => {
     }
 });
 
-
+// GET /patient/all (Protected route - Only for doctors)
+patientRouter.get('/all', auth, async (req, res) => {
+    try {
+        console.log('Fetching patients, auth token:', req.headers.authorization);
+        console.log('User from auth middleware:', req.user);
+        
+        const patients = await Patient.find()
+            .select('name email age')
+            .sort({ name: 1 });
+        
+        console.log('Found patients:', patients);
+        res.json(patients);
+    } catch (err) {
+        console.error('Error in /patient/all:', err);
+        res.status(500).json({ message: 'Error fetching patients' });
+    }
+});
 
 module.exports = patientRouter;

@@ -53,16 +53,9 @@ const LoginPatient = () => {
       }
 
       if (response.ok) {
-        if (data.success) {
-          // Clear any existing doctor tokens to ensure only one user type is logged in at a time
-          localStorage.removeItem('doctorToken');
-          localStorage.removeItem('doctorData');
-          
-          // Set patient tokens
+        if (!isSignup) {
           localStorage.setItem('patientToken', data.token);
           localStorage.setItem('patientData', JSON.stringify(data.user));
-          navigate('/patient');
-        } else {
           toast.success('Login successful!');
         }
         if (isSignup) {

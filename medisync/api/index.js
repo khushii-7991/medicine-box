@@ -9,7 +9,6 @@ const hospitalRoutes = require('./routes/hospitalRoute');
 const hospitalSearchRoutes = require('./routes/hospitalSearchRoute');
 const appointmentRoutes = require('./routes/appointmentRoute');
 const dashboardRoutes = require('./routes/dashboardRoute');
-const notificationRoutes = require('./routes/notificationRoute');
 const path = require('path');
 
 const app = express();
@@ -47,7 +46,6 @@ app.use('/hospital', hospitalRoutes);
 app.use('/api/hospitals', hospitalSearchRoutes);
 app.use('/appointment', appointmentRoutes);
 app.use('/dashboard', dashboardRoutes);
-app.use('/notifications', notificationRoutes);
 
 // Error handling middleware
 app.use((req, res, next) => {
