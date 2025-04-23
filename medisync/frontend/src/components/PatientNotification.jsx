@@ -31,6 +31,7 @@ const PatientNotification = () => {
                 return;
             }
 
+            console.log('Fetching patient notifications...');
             // Fetch notifications from backend
             const response = await axios.get(
                 'http://localhost:3000/notification/patient',
@@ -42,13 +43,19 @@ const PatientNotification = () => {
                 }
             );
 
+            console.log('Notifications received:', response.data);
             // If API endpoint doesn't exist yet, use this mock data
             const notificationsData = response.data || mockNotifications();
             
-            setNotifications(notificationsData);
+            // Sort notifications by time (newest first)
+            const sortedNotifications = [...notificationsData].sort((a, b) => {
+                return new Date(b.time) - new Date(a.time);
+            });
+            
+            setNotifications(sortedNotifications);
             
             // Count unread notifications
-            const unread = notificationsData.filter(notification => !notification.read).length;
+            const unread = sortedNotifications.filter(notification => !notification.read).length;
             setUnreadCount(unread);
             
             // Store last check time
@@ -290,7 +297,10 @@ const PatientNotification = () => {
                                                     notification.status === 'cancelled' ? 'bg-red-100 text-red-800' : 
                                                     'bg-blue-100 text-blue-800'
                                                 }`}>
-                                                    {notification.status.charAt(0).toUpperCase() + notification.status.slice(1)}
+                                                    {notification.rescheduled ? 
+                                                        (notification.status === 'cancelled' ? 'Emergency Cancellation' : 'Rescheduled') : 
+                                                        notification.status.charAt(0).toUpperCase() + notification.status.slice(1)
+                                                    }
                                                 </span>
                                             )}
                                         </div>
