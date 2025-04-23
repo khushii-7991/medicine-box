@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { FiUser, FiMail, FiPhone, FiMapPin, FiCalendar, FiEdit2, FiSave, FiActivity, FiHeart } from 'react-icons/fi';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 
 const Profile = () => {
+    const navigate = useNavigate();
     const [patientData, setPatientData] = useState({
         name: '',
         email: '',
@@ -53,23 +55,26 @@ const Profile = () => {
 
     const loadPatientData = async () => {
         try {
+            const token = localStorage.getItem('patientToken');
+            if (!token) {
+                setError('No authentication token found');
+                setLoading(false);
+                return;
+            }
+
             const savedData = JSON.parse(localStorage.getItem('patientData') || '{}');
             
-            // If we have a doctor token, fetch the complete patient data from the backend
-            const doctorToken = localStorage.getItem('doctorToken');
-            if (doctorToken && savedData.id) {
-                const response = await axios.get(`http://localhost:3000/patient/${savedData.id}`, {
-                    headers: {
-                        'Authorization': `Bearer ${doctorToken}`
-                    }
-                });
-                setPatientData({ ...savedData, ...response.data });
-            } else {
-                setPatientData(savedData);
-            }
+            // Add Authorization header to the request
+            const response = await axios.get(`http://localhost:3000/api/patient/profile`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            
+            setPatientData({ ...savedData, ...response.data });
             setLoading(false);
         } catch (err) {
-            setError('Error loading profile data');
+            setError(err.message || 'Error loading profile data');
             setLoading(false);
         }
     };

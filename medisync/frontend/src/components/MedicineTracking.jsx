@@ -3,6 +3,32 @@ import { FaCheck, FaTimes, FaExclamation, FaChevronLeft, FaChevronRight, FaPlus,
 import { useNavigate } from 'react-router-dom';
 import MedicineNotification from './MedicineNotification';
 
+// Utility functions
+const canMarkAsTaken = (date) => {
+    const now = new Date();
+    const medicineTime = new Date(date);
+    const timeDiff = Math.abs(now - medicineTime);
+    const hoursDiff = timeDiff / (1000 * 60 * 60);
+    return hoursDiff <= 2; // Can take medicine within 2 hours of scheduled time
+};
+
+const getTimeDifferenceMessage = (date) => {
+    const now = new Date();
+    const medicineTime = new Date(date);
+    const timeDiff = medicineTime - now;
+    const hoursDiff = timeDiff / (1000 * 60 * 60);
+
+    if (hoursDiff > 2) {
+        return `Scheduled in ${Math.round(hoursDiff)} hours`;
+    } else if (hoursDiff > 0) {
+        return 'Due now';
+    } else if (hoursDiff > -2) {
+        return 'Take soon';
+    } else {
+        return 'Time window expired';
+    }
+};
+
 const MedicineTracking = ({ prescriptionId }) => {
     const navigate = useNavigate();
     const [trackingData, setTrackingData] = useState([]);
@@ -36,6 +62,117 @@ const MedicineTracking = ({ prescriptionId }) => {
     const [reminders, setReminders] = useState([]);
     const [selectedDate, setSelectedDate] = useState(null);
     const [showDateDetails, setShowDateDetails] = useState(false);
+    const [selectedDateMedicines, setSelectedDateMedicines] = useState([]);
+    const [showMedicineModal, setShowMedicineModal] = useState(false);
+    const [hoveredDay, setHoveredDay] = useState(null);
+    const [showNotification, setShowNotification] = useState(false);
+    const [notificationMessage, setNotificationMessage] = useState('');
+
+    // Load reminders from localStorage when component mounts
+    useEffect(() => {
+        const loadReminders = () => {
+            const savedReminders = JSON.parse(localStorage.getItem('reminders') || '[]');
+            setReminders(savedReminders);
+        };
+
+        loadReminders();
+        // Add event listener for reminders changes
+        window.addEventListener('remindersChanged', loadReminders);
+
+        return () => {
+            window.removeEventListener('remindersChanged', loadReminders);
+        };
+    }, []);
+
+    // Function to get medicines for a specific date
+    const getMedicinesForDate = (date) => {
+        if (!date) return [];
+        return reminders.filter(reminder => {
+            const reminderDate = new Date(reminder.date);
+            return reminderDate.toDateString() === date.toDateString();
+        });
+    };
+
+    // Function to render medicine tooltip
+    const renderMedicineTooltip = (date) => {
+        const medicines = getMedicinesForDate(date);
+        if (!medicines || medicines.length === 0) return null;
+
+        return (
+            <div className="absolute z-50 bg-white rounded-lg shadow-xl p-4 min-w-[300px] border border-gray-200 transform -translate-x-1/2 left-1/2 bottom-full mb-2">
+                <div className="space-y-3 max-h-[300px] overflow-y-auto">
+                    {medicines.map((medicine, index) => {
+                        const scheduledTime = new Date(medicine.date);
+                        const canTake = canMarkAsTaken(medicine.date);
+                        const timeMessage = getTimeDifferenceMessage(medicine.date);
+                        
+                        return (
+                            <div 
+                                key={index} 
+                                className={`p-3 rounded-lg border ${
+                                    medicine.completed 
+                                        ? 'bg-green-50 border-green-200' 
+                                        : timeMessage === 'Time window expired'
+                                            ? 'bg-red-50 border-red-200'
+                                            : 'bg-white border-gray-200'
+                                }`}
+                            >
+                                <div className="flex justify-between items-start gap-4">
+                                    <div>
+                                        <h4 className="font-medium">{medicine.medicine}</h4>
+                                        <p className="text-xs text-gray-600">
+                                            Time: {scheduledTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </p>
+                                        <p className="text-xs text-gray-600">
+                                            Dosage: {medicine.dosage || 'Not specified'}
+                                        </p>
+                                        {medicine.completed ? (
+                                            <p className="text-xs text-green-600">
+                                                Taken at: {new Date(medicine.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </p>
+                                        ) : (
+                                            <p className={`text-xs ${
+                                                timeMessage === 'Time window expired' 
+                                                    ? 'text-red-600' 
+                                                    : canTake 
+                                                        ? 'text-green-600'
+                                                        : 'text-yellow-600'
+                                            }`}>
+                                                {timeMessage}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleReminderComplete(medicine.id, medicine.date);
+                                        }}
+                                        disabled={!canTake || medicine.completed}
+                                        className={`p-1.5 rounded-full ${
+                                            medicine.completed
+                                                ? 'bg-green-500 text-white cursor-not-allowed'
+                                                : !canTake
+                                                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                                    : 'bg-green-500 text-white hover:bg-green-600'
+                                        }`}
+                                        title={
+                                            medicine.completed
+                                                ? "Already taken"
+                                                : !canTake
+                                                    ? "Cannot take now"
+                                                    : "Mark as taken"
+                                        }
+                                    >
+                                        <FaCheck className="text-sm" />
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        );
+    };
 
     // Generate calendar days for the current month
     const getCalendarDays = () => {
@@ -58,27 +195,53 @@ const MedicineTracking = ({ prescriptionId }) => {
         // Add days of the month
         for (let day = 1; day <= daysInMonth; day++) {
             const date = new Date(year, month, day);
-            const dayData = trackingData.find(d => 
-                d.date && d.date.toDateString() === date.toDateString()
-            );
+            const dateString = date.toISOString().split('T')[0];
+            
+            // Get all reminders for this day
+            const dayReminders = reminders.filter(r => {
+                const reminderDate = new Date(r.date);
+                return reminderDate.toDateString() === date.toDateString();
+            });
 
-            if (dayData) {
-                if (dayData.status === 'completed') {
+            // Calculate status based on medicine completion
+            let status = 'none'; // Default status (red)
+            if (dayReminders.length > 0) {
+                const completedCount = dayReminders.filter(r => r.completed).length;
+                const totalCount = dayReminders.length;
+                
+                if (completedCount === totalCount) {
+                    status = 'all'; // All medicines taken (green)
                     currentStreak++;
                     longestStreak = Math.max(longestStreak, currentStreak);
+                } else if (completedCount > 0) {
+                    status = 'some'; // Some medicines taken (yellow)
+                    currentStreak = 0;
                 } else {
+                    status = 'none'; // No medicines taken (red)
                     currentStreak = 0;
                 }
             }
             
             days.push({
                 date,
-                status: dayData ? dayData.status : null,
-                details: dayData ? dayData.details : []
+                status,
+                medicines: dayReminders.map(r => ({
+                    name: r.medicineName,
+                    time: r.time,
+                    completed: r.completed,
+                    dosage: r.dosage
+                }))
             });
         }
         
-        return days;
+        // Update streak data
+        return {
+            days,
+            streakInfo: {
+                currentStreak,
+                longestStreak
+            }
+        };
     };
 
     useEffect(() => {
@@ -181,36 +344,13 @@ const MedicineTracking = ({ prescriptionId }) => {
     }, [currentDate]);
 
     useEffect(() => {
-        const calculateStreaks = () => {
-            let currentStreak = 0;
-            let longestStreak = 0;
-            let tempStreak = 0;
-            let totalCompleted = 0;
-
-            trackingData.forEach(day => {
-                if (day.status === 'completed') {
-                    tempStreak++;
-                    totalCompleted++;
-                    if (tempStreak > longestStreak) {
-                        longestStreak = tempStreak;
-                    }
-                } else {
-                    if (tempStreak > 0) {
-                        currentStreak = tempStreak;
-                    }
-                    tempStreak = 0;
-                }
-            });
-
-            setStreakData({
-                currentStreak,
-                longestStreak,
-                totalCompleted
-            });
-        };
-
-        calculateStreaks();
-    }, [trackingData]);
+        const { streakInfo } = getCalendarDays();
+        setStreakData(prev => ({
+            ...prev,
+            currentStreak: streakInfo.currentStreak,
+            longestStreak: Math.max(prev.longestStreak, streakInfo.longestStreak)
+        }));
+    }, [currentDate, reminders]);
 
     useEffect(() => {
         const fetchMedicines = async () => {
@@ -268,11 +408,15 @@ const MedicineTracking = ({ prescriptionId }) => {
     };
 
     const handlePrevMonth = () => {
-        setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+        const newDate = new Date(currentDate);
+        newDate.setMonth(newDate.getMonth() - 1);
+        setCurrentDate(newDate);
     };
 
     const handleNextMonth = () => {
-        setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+        const newDate = new Date(currentDate);
+        newDate.setMonth(newDate.getMonth() + 1);
+        setCurrentDate(newDate);
     };
 
     const handleAddMedicine = () => {
@@ -338,9 +482,45 @@ const MedicineTracking = ({ prescriptionId }) => {
     };
 
     const handleDateClick = (day) => {
-        if (day.date) {
-            setSelectedDate(day);
-            setShowDateDetails(true);
+        if (!day.date) return;
+
+        // Get all reminders for the selected date
+        const selectedReminders = reminders.filter(reminder => {
+            const reminderDate = new Date(reminder.date);
+            return reminderDate.toDateString() === day.date.toDateString();
+        });
+
+        setSelectedDateMedicines(selectedReminders);
+        setShowMedicineModal(true);
+    };
+
+    const handleReminderComplete = async (medicineId, date) => {
+        try {
+            const response = await fetch(`${process.env.REACT_APP_API_URL}/api/tracking/mark-taken`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                },
+                body: JSON.stringify({
+                    medicineId,
+                    date,
+                    prescriptionId
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to mark medicine as taken');
+            }
+
+            // Refresh tracking data
+            fetchTrackingData();
+            setShowNotification(true);
+            setNotificationMessage('Medicine marked as taken!');
+            setTimeout(() => setShowNotification(false), 3000);
+        } catch (error) {
+            console.error('Error marking medicine as taken:', error);
+            setError('Failed to mark medicine as taken. Please try again.');
         }
     };
 
@@ -360,154 +540,229 @@ const MedicineTracking = ({ prescriptionId }) => {
         );
     }
 
-    const calendarDays = getCalendarDays();
+    const { days } = getCalendarDays();
     const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
+    // Function to render medicine details modal
+    const renderMedicineModal = () => {
+        if (!showMedicineModal) return null;
+
+        return (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-xl font-semibold">
+                            Medicines for {selectedDateMedicines[0]?.date ? new Date(selectedDateMedicines[0].date).toLocaleDateString() : 'Selected Date'}
+                        </h3>
+                        <button 
+                            onClick={() => setShowMedicineModal(false)}
+                            className="text-gray-500 hover:text-gray-700"
+                        >
+                            <FaTimes />
+                        </button>
+                    </div>
+                    
+                    {selectedDateMedicines.length === 0 ? (
+                        <p className="text-gray-600 text-center py-4">No medicines scheduled for this date.</p>
+                    ) : (
+                        <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+                            {selectedDateMedicines.map((medicine, index) => {
+                                const scheduledTime = new Date(medicine.date);
+                                const canTake = canMarkAsTaken(medicine.date);
+                                const timeMessage = getTimeDifferenceMessage(medicine.date);
+                                
+                                return (
+                                    <div 
+                                        key={index} 
+                                        className={`p-4 rounded-lg border ${
+                                            medicine.completed 
+                                                ? 'bg-green-50 border-green-200' 
+                                                : timeMessage === 'Time window expired'
+                                                    ? 'bg-red-50 border-red-200'
+                                                    : 'bg-white border-gray-200'
+                                        }`}
+                                    >
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <h4 className="font-medium text-lg">{medicine.medicine}</h4>
+                                                <p className="text-sm text-gray-600">
+                                                    Scheduled: {scheduledTime.toLocaleTimeString()}
+                                                </p>
+                                                <p className="text-sm text-gray-600">
+                                                    Dosage: {medicine.dosage || 'Not specified'}
+                                                </p>
+                                                {medicine.completed && (
+                                                    <p className="text-sm text-green-600">
+                                                        Taken at: {new Date(medicine.completedAt).toLocaleTimeString()}
+                                                    </p>
+                                                )}
+                                                {!medicine.completed && (
+                                                    <p className={`text-sm ${
+                                                        timeMessage === 'Time window expired' 
+                                                            ? 'text-red-600' 
+                                                            : canTake 
+                                                                ? 'text-green-600'
+                                                                : 'text-yellow-600'
+                                                    }`}>
+                                                        {timeMessage}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={() => handleReminderComplete(medicine.id, medicine.date)}
+                                                    disabled={!canTake || medicine.completed}
+                                                    className={`p-2 rounded-full ${
+                                                        medicine.completed
+                                                            ? 'bg-green-500 text-white cursor-not-allowed'
+                                                            : !canTake
+                                                                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                                                : 'bg-green-500 text-white hover:bg-green-600'
+                                                    }`}
+                                                    title={
+                                                        medicine.completed
+                                                            ? "Already taken"
+                                                            : !canTake
+                                                                ? "Cannot take now"
+                                                                : "Mark as taken"
+                                                    }
+                                                >
+                                                    <FaCheck />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    };
+
     return (
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="p-6 bg-white rounded-lg shadow-lg">
             <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold">Medication Calendar</h2>
+                <button
+                    onClick={() => navigate(-1)}
+                    className="flex items-center text-gray-600 hover:text-gray-800"
+                >
+                    <FaArrowLeft className="mr-2" /> Back
+                </button>
+                <h2 className="text-2xl font-bold text-center">Medicine Tracking</h2>
+                <div className="w-24"></div>
             </div>
 
-            {/* Streak Stats */}
-            <div className="grid grid-cols-3 gap-4 mb-6">
-                <div className="bg-blue-50 p-4 rounded-lg text-center">
-                    <div className="text-2xl font-bold text-blue-600">{streakData.currentStreak}</div>
-                    <div className="text-sm text-gray-600">Current Streak</div>
-                </div>
-                <div className="bg-purple-50 p-4 rounded-lg text-center">
-                    <div className="text-2xl font-bold text-purple-600">{streakData.longestStreak}</div>
-                    <div className="text-sm text-gray-600">Longest Streak</div>
-                </div>
-                <div className="bg-green-50 p-4 rounded-lg text-center">
-                    <div className="text-2xl font-bold text-green-600">{streakData.totalCompleted}</div>
-                    <div className="text-sm text-gray-600">Total Completed</div>
-                </div>
-            </div>
-
-            {/* Calendar Header */}
+            {/* Calendar Navigation */}
             <div className="flex justify-between items-center mb-4">
                 <button
                     onClick={handlePrevMonth}
-                    className="p-2 rounded-full hover:bg-gray-100"
+                    className="p-2 hover:bg-gray-100 rounded"
                 >
-                    <FaChevronLeft className="text-gray-600" />
+                    <FaChevronLeft />
                 </button>
-                <h3 className="text-lg font-semibold">
-                    {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
+                <h3 className="text-xl font-semibold">
+                    {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
                 </h3>
                 <button
                     onClick={handleNextMonth}
-                    className="p-2 rounded-full hover:bg-gray-100"
+                    className="p-2 hover:bg-gray-100 rounded"
                 >
-                    <FaChevronRight className="text-gray-600" />
+                    <FaChevronRight />
                 </button>
             </div>
 
             {/* Calendar Grid */}
-            <div className="grid grid-cols-7 gap-2">
+            <div className="grid grid-cols-7 gap-2 mb-4">
                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                    <div key={day} className="text-center font-medium text-gray-600">
+                    <div key={day} className="text-center font-semibold p-2">
                         {day}
                     </div>
                 ))}
-                {calendarDays.map((day, index) => (
-                    <div
-                        key={index}
-                        onClick={() => handleDateClick(day)}
-                        className={`relative p-2 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors group ${
-                            day.date ? 'h-20' : 'h-20 bg-gray-50'
-                        } ${day.status ? getStatusColor(day.status) : ''}`}
-                    >
-                        {day.date && (
-                            <>
-                                <div className="text-sm font-medium">
-                                    {day.date.getDate()}
-                                </div>
-                                {day.status && (
-                                    <div className="absolute bottom-1 right-1">
-                                        {getStatusIcon(day.status)}
-                                    </div>
-                                )}
-                            </>
-                        )}
-                    </div>
-                ))}
+                {days.map((day, index) => {
+                    if (!day.date) {
+                        return (
+                            <div key={index} className="p-2 bg-gray-100 rounded-lg text-center">
+                                &nbsp;
+                            </div>
+                        );
+                    }
+
+                    const dayMedicines = getMedicinesForDate(day.date);
+                    const allTaken = dayMedicines.length > 0 && dayMedicines.every(m => m.completed);
+                    const someTaken = dayMedicines.some(m => m.completed);
+                    const hasExpired = dayMedicines.some(m => getTimeDifferenceMessage(m.date) === 'Time window expired');
+                    
+                    return (
+                        <div
+                            key={index}
+                            onMouseEnter={() => setHoveredDay(index)}
+                            onMouseLeave={() => setHoveredDay(null)}
+                            className={`
+                                p-2 rounded-lg text-center relative
+                                ${allTaken ? 'bg-green-200 hover:bg-green-300' :
+                                  someTaken ? 'bg-yellow-200 hover:bg-yellow-300' :
+                                  hasExpired ? 'bg-red-200 hover:bg-red-300' :
+                                  dayMedicines.length > 0 ? 'bg-white hover:bg-gray-100' :
+                                  'bg-gray-50'}
+                                ${day.date.toDateString() === new Date().toDateString() ? 'ring-2 ring-blue-500' : ''}
+                                transition-all duration-200 ease-in-out
+                                hover:shadow-md
+                            `}
+                        >
+                            <span className="text-sm">{day.date.getDate()}</span>
+                            {dayMedicines.length > 0 && (
+                                <span className="absolute -top-1 -right-1 text-xs bg-blue-500 text-white rounded-full w-4 h-4 flex items-center justify-center">
+                                    {dayMedicines.length}
+                                </span>
+                            )}
+                            {hoveredDay === index && dayMedicines.length > 0 && renderMedicineTooltip(day.date)}
+                        </div>
+                    );
+                })}
             </div>
 
-            {/* Date Details Modal */}
-            {showDateDetails && selectedDate && (
-                <div className="fixed inset-0 flex items-center justify-center">
-                    <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-2xl">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-xl font-bold">
-                                {selectedDate.date.toLocaleDateString('en-US', { 
-                                    weekday: 'long', 
-                                    year: 'numeric', 
-                                    month: 'long', 
-                                    day: 'numeric' 
-                                })}
-                            </h3>
-                            <button
-                                onClick={() => setShowDateDetails(false)}
-                                className="text-gray-500 hover:text-gray-700"
-                            >
-                                ✕
-                            </button>
-                        </div>
-                        
-                        {selectedDate.details && selectedDate.details.length > 0 ? (
-                            <div className="space-y-4">
-                                {selectedDate.details.map((detail, index) => (
-                                    <div
-                                        key={index}
-                                        className="p-4 rounded-lg bg-white border border-gray-200"
-                                    >
-                                        <div className="flex justify-between items-start">
-                                            <div>
-                                                <h4 className="font-medium">{detail.medicineName}</h4>
-                                                <p className="text-sm text-gray-600">{detail.timing}</p>
-                                                <p className="text-xs text-gray-500 mt-1">
-                                                    Duration: {detail.duration}
-                                                </p>
-                                                <p className="text-xs text-gray-500">
-                                                    From: {new Date(detail.startDate).toLocaleDateString()} to {new Date(detail.endDate).toLocaleDateString()}
-                                                </p>
-                                            </div>
-                                            <div className={`w-4 h-4 rounded-full ${
-                                                detail.completed ? 'bg-green-500' : 'bg-red-500'
-                                            }`} />
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="text-center py-8">
-                                <p className="text-gray-600">No medicines scheduled for this day</p>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
-
             {/* Legend */}
-            <div className="flex justify-center gap-4 mt-4 text-sm">
-                <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-green-500 rounded"></div>
+            <div className="flex justify-center items-center space-x-4 mt-4 text-sm">
+                <div className="flex items-center">
+                    <div className="w-4 h-4 bg-green-200 rounded mr-2"></div>
                     <span>All Taken</span>
                 </div>
-                <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-blue-500 rounded"></div>
-                    <span>Some Taken</span>
+                <div className="flex items-center">
+                    <div className="w-4 h-4 bg-yellow-200 rounded mr-2"></div>
+                    <span>Partially Taken</span>
                 </div>
-                <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-red-500 rounded"></div>
+                <div className="flex items-center">
+                    <div className="w-4 h-4 bg-red-200 rounded mr-2"></div>
                     <span>None Taken</span>
                 </div>
             </div>
 
-            {/* Add the MedicineNotification component */}
-            <MedicineNotification />
+            {/* Streak Information */}
+            <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                <div className="grid grid-cols-3 gap-4 text-center">
+                    <div>
+                        <p className="text-gray-600">Current Streak</p>
+                        <p className="text-2xl font-bold">{streakData.currentStreak}</p>
+                    </div>
+                    <div>
+                        <p className="text-gray-600">Longest Streak</p>
+                        <p className="text-2xl font-bold">{streakData.longestStreak}</p>
+                    </div>
+                    <div>
+                        <p className="text-gray-600">Total Completed</p>
+                        <p className="text-2xl font-bold">{streakData.totalCompleted}</p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Medicine Details Modal */}
+            {renderMedicineModal()}
+
+            {showNotification && (
+                <MedicineNotification message={notificationMessage} />
+            )}
         </div>
     );
 };

@@ -56,13 +56,109 @@ const HealthRemainders = () => {
         return `${String(newHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
     };
 
-    // Function to check if a reminder is missed
-    const isReminderMissed = (reminder) => {
-        if (reminder.completed) return false;
-        const now = new Date();
-        const reminderTime = new Date(reminder.time);
-        const timeDiff = now - reminderTime;
-        return timeDiff > 15 * 60 * 1000; // 15 minutes in milliseconds
+    // Function to check if a reminder can be marked as taken
+    const canMarkAsTaken = (scheduledTime) => {
+        try {
+            const now = new Date();
+            const scheduled = new Date(scheduledTime);
+            
+            if (isNaN(scheduled.getTime())) {
+                console.error('Invalid scheduled time:', scheduledTime);
+                return false;
+            }
+
+            // Get current and scheduled time in minutes since midnight
+            const nowMinutes = now.getHours() * 60 + now.getMinutes();
+            const scheduledMinutes = scheduled.getHours() * 60 + scheduled.getMinutes();
+            
+            // Calculate time difference in minutes
+            const diffMinutes = nowMinutes - scheduledMinutes;
+            
+            // Can only mark as taken if:
+            // 1. Current time is after or equal to scheduled time
+            // 2. Within 15 minutes of scheduled time
+            return diffMinutes >= 0 && diffMinutes <= 15;
+        } catch (error) {
+            console.error('Error in canMarkAsTaken:', error);
+            return false;
+        }
+    };
+
+    // Function to get time difference message
+    const getTimeDifferenceMessage = (scheduledTime) => {
+        try {
+            const now = new Date();
+            const scheduled = new Date(scheduledTime);
+            
+            if (isNaN(scheduled.getTime())) {
+                console.error('Invalid scheduled time:', scheduledTime);
+                return 'Invalid time';
+            }
+
+            // Get current and scheduled time in minutes since midnight
+            const nowMinutes = now.getHours() * 60 + now.getMinutes();
+            const scheduledMinutes = scheduled.getHours() * 60 + scheduled.getMinutes();
+            
+            // Calculate time difference in minutes
+            const diffMinutes = nowMinutes - scheduledMinutes;
+            
+            if (diffMinutes < 0) {
+                // Time is in the future
+                const minutesUntil = Math.abs(diffMinutes);
+                if (minutesUntil < 60) {
+                    return `Due in ${minutesUntil} minutes`;
+                } else {
+                    const hoursUntil = Math.floor(minutesUntil / 60);
+                    const remainingMinutes = minutesUntil % 60;
+                    return `Due in ${hoursUntil}h ${remainingMinutes}m`;
+                }
+            } else if (diffMinutes <= 15) {
+                // Within 15-minute window
+                return 'Available to mark as taken';
+            } else {
+                // Past 15-minute window
+                return 'Time window expired';
+            }
+        } catch (error) {
+            console.error('Error in getTimeDifferenceMessage:', error);
+            return 'Error calculating time';
+        }
+    };
+
+    // Function to handle reminder completion
+    const handleReminderComplete = (reminderId) => {
+        const reminder = reminders.find(r => r.id === reminderId);
+        if (!reminder) return;
+
+        if (!canMarkAsTaken(reminder.date)) {
+            const message = getTimeDifferenceMessage(reminder.date);
+            alert(message === 'Time window expired' 
+                ? 'You can no longer mark this medicine as taken. The 15-minute window has expired.'
+                : 'You cannot mark this medicine as taken yet. Please wait until the scheduled time.');
+            return;
+        }
+
+        const updatedReminders = reminders.map(r => {
+            if (r.id === reminderId) {
+                const now = new Date();
+                return {
+                    ...r,
+                    completed: true,
+                    completedAt: now.toISOString(),
+                    status: 'completed'
+                };
+            }
+            return r;
+        });
+
+        setReminders(updatedReminders);
+        localStorage.setItem('reminders', JSON.stringify(updatedReminders));
+
+        // Emit event to notify medicine tracking
+        const event = new CustomEvent('remindersChanged', {
+            detail: { reminders: updatedReminders }
+        });
+        window.dispatchEvent(event);
     };
 
     const isBeforeScheduledTime = (reminder) => {
@@ -228,19 +324,52 @@ const HealthRemainders = () => {
     };
 
     const createRemindersForDate = (date, medicineDetails, timing, customTime = null) => {
-        const [hours, minutes] = (customTime || timing === 'morning' ? morningTime : 
-                                 timing === 'afternoon' ? afternoonTime : eveningTime).split(':').map(Number);
+        let timeToUse;
+        
+        if (reminderType === 'prescription') {
+            // Use prescription-specific times
+            switch (timing) {
+                case 'morning':
+                    timeToUse = prescriptionMorningTime;
+                    break;
+                case 'afternoon':
+                    timeToUse = prescriptionAfternoonTime;
+                    break;
+                case 'evening':
+                    timeToUse = prescriptionEveningTime;
+                    break;
+                default:
+                    timeToUse = prescriptionMorningTime;
+            }
+        } else {
+            // Use manual/custom times
+            switch (timing) {
+                case 'morning':
+                    timeToUse = morningTime;
+                    break;
+                case 'afternoon':
+                    timeToUse = afternoonTime;
+                    break;
+                case 'evening':
+                    timeToUse = eveningTime;
+                    break;
+                default:
+                    timeToUse = customTime || morningTime;
+            }
+        }
+
+        const [hours, minutes] = timeToUse.split(':').map(Number);
         const reminderDateTime = new Date(date);
         reminderDateTime.setHours(hours, minutes, 0, 0);
 
         return {
             id: Date.now() + Math.random(),
-            title: selectedMedicine,
+            title: reminderType === 'prescription' ? selectedMedicine : reminderTitle,
             date: reminderDateTime.toISOString(),
-            medicine: selectedMedicine,
+            medicine: reminderType === 'prescription' ? selectedMedicine : reminderTitle,
             timing: timing,
-            customTime: customTime,
-            dosage: medicineDetails.dosage || dosage,
+            customTime: timeToUse,
+            dosage: medicineDetails.dosage || manualDosage,
             completed: false,
             endDate: calculateEndDate(date, medicineDetails.duration || duration)
         };
@@ -276,36 +405,50 @@ const HealthRemainders = () => {
             // For manual entry, create basic medicine details
             medicineDetails = {
                 medicine: reminderTitle,
-                dosage: manualDosage || '1 tablet', // Default dosage if not provided
-                duration: '7' // Default duration
+                dosage: manualDosage || '1 tablet',
+                duration: duration || '7'
             };
         }
 
-        // Calculate end date
-        const endDate = new Date(currentDate);
-        endDate.setDate(endDate.getDate() + 7); // Default 7 days duration
+        // Calculate end date based on start date and duration
+        const endDateObj = new Date(endDate || calculateEndDate(startDate || currentDate.toISOString(), medicineDetails.duration));
+        
+        // Use start date if provided, otherwise use current date
+        let currentDay = startDate ? new Date(startDate) : new Date(currentDate);
 
-        // Create reminders for each day until end date
-        let currentDay = new Date(currentDate);
-        while (currentDay <= endDate) {
-            if (frequency === 'once') {
-                newReminders.push(createRemindersForDate(new Date(currentDay), medicineDetails, 'morning'));
-            } else if (frequency === 'twice') {
-                newReminders.push(createRemindersForDate(new Date(currentDay), medicineDetails, 'morning'));
-                newReminders.push(createRemindersForDate(new Date(currentDay), medicineDetails, 'evening'));
-            } else if (frequency === 'thrice') {
-                newReminders.push(createRemindersForDate(new Date(currentDay), medicineDetails, 'morning'));
-                newReminders.push(createRemindersForDate(new Date(currentDay), medicineDetails, 'afternoon'));
-                newReminders.push(createRemindersForDate(new Date(currentDay), medicineDetails, 'evening'));
-            } else if (frequency === 'custom') {
-                if (morningTime) {
-                    newReminders.push(createRemindersForDate(new Date(currentDay), medicineDetails, 'morning', morningTime));
+        while (currentDay <= endDateObj) {
+            if (reminderType === 'prescription') {
+                const prescriptionMed = prescriptionMedicines.find(m => m.medicine === selectedMedicine);
+                if (prescriptionMed?.dosage?.includes('3 Times')) {
+                    newReminders.push(createRemindersForDate(new Date(currentDay), medicineDetails, 'morning'));
+                    newReminders.push(createRemindersForDate(new Date(currentDay), medicineDetails, 'afternoon'));
+                    newReminders.push(createRemindersForDate(new Date(currentDay), medicineDetails, 'evening'));
+                } else if (prescriptionMed?.dosage?.includes('2 Times')) {
+                    newReminders.push(createRemindersForDate(new Date(currentDay), medicineDetails, 'morning'));
+                    newReminders.push(createRemindersForDate(new Date(currentDay), medicineDetails, 'evening'));
+                } else {
+                    newReminders.push(createRemindersForDate(new Date(currentDay), medicineDetails, 'morning'));
                 }
-                if (afternoonTime) {
-                    newReminders.push(createRemindersForDate(new Date(currentDay), medicineDetails, 'afternoon', afternoonTime));
-                }
-                if (eveningTime) {
-                    newReminders.push(createRemindersForDate(new Date(currentDay), medicineDetails, 'evening', eveningTime));
+            } else {
+                if (frequency === 'once') {
+                    newReminders.push(createRemindersForDate(new Date(currentDay), medicineDetails, 'morning'));
+                } else if (frequency === 'twice') {
+                    newReminders.push(createRemindersForDate(new Date(currentDay), medicineDetails, 'morning'));
+                    newReminders.push(createRemindersForDate(new Date(currentDay), medicineDetails, 'evening'));
+                } else if (frequency === 'thrice') {
+                    newReminders.push(createRemindersForDate(new Date(currentDay), medicineDetails, 'morning'));
+                    newReminders.push(createRemindersForDate(new Date(currentDay), medicineDetails, 'afternoon'));
+                    newReminders.push(createRemindersForDate(new Date(currentDay), medicineDetails, 'evening'));
+                } else if (frequency === 'custom') {
+                    if (morningTime) {
+                        newReminders.push(createRemindersForDate(new Date(currentDay), medicineDetails, 'morning'));
+                    }
+                    if (afternoonTime) {
+                        newReminders.push(createRemindersForDate(new Date(currentDay), medicineDetails, 'afternoon'));
+                    }
+                    if (eveningTime) {
+                        newReminders.push(createRemindersForDate(new Date(currentDay), medicineDetails, 'evening'));
+                    }
                 }
             }
             currentDay.setDate(currentDay.getDate() + 1);
@@ -320,141 +463,20 @@ const HealthRemainders = () => {
             // Reset form fields
             setSelectedMedicine('');
             setFrequency('once');
-            setDosage('');
-            setMorningTime('');
-            setAfternoonTime('');
-            setEveningTime('');
+            setMorningTime('08:00');
+            setAfternoonTime('14:00');
+            setEveningTime('20:00');
             setReminderTitle('');
             setManualDosage('');
             setShowAddReminder(false);
 
-            // Navigate to reminders list page
+            // Navigate to medicine tracking page
             setTimeout(() => {
-                navigate('/reminders');
+                navigate('/medicine-tracking');
             }, 500);
         } else {
             toast.error('Please select at least one time for the reminder');
         }
-    };
-
-    // Update the canMarkAsTaken function
-    const canMarkAsTaken = (scheduledTime) => {
-        try {
-            const now = new Date();
-            const scheduled = new Date(scheduledTime);
-            
-            if (isNaN(scheduled.getTime())) {
-                console.error('Invalid scheduled time:', scheduledTime);
-                return false;
-            }
-
-            // Compare only hours and minutes
-            const nowHours = now.getHours();
-            const nowMinutes = now.getMinutes();
-            const scheduledHours = scheduled.getHours();
-            const scheduledMinutes = scheduled.getMinutes();
-            
-            // Convert to total minutes for comparison
-            const nowTotalMinutes = nowHours * 60 + nowMinutes;
-            const scheduledTotalMinutes = scheduledHours * 60 + scheduledMinutes;
-            
-            // Calculate difference in minutes
-            const diffMinutes = nowTotalMinutes - scheduledTotalMinutes;
-            
-            // Enable if current time is within 15 minutes after scheduled time
-            return diffMinutes >= 0 && diffMinutes <= 15;
-        } catch (error) {
-            console.error('Error in canMarkAsTaken:', error);
-            return false;
-        }
-    };
-
-    // Update the getTimeDifferenceMessage function
-    const getTimeDifferenceMessage = (scheduledTime) => {
-        try {
-            const now = new Date();
-            const scheduled = new Date(scheduledTime);
-            
-            if (isNaN(scheduled.getTime())) {
-                console.error('Invalid scheduled time:', scheduledTime);
-                return 'Invalid time';
-            }
-
-            // Compare only hours and minutes
-            const nowHours = now.getHours();
-            const nowMinutes = now.getMinutes();
-            const scheduledHours = scheduled.getHours();
-            const scheduledMinutes = scheduled.getMinutes();
-            
-            // Convert to total minutes for comparison
-            const nowTotalMinutes = nowHours * 60 + nowMinutes;
-            const scheduledTotalMinutes = scheduledHours * 60 + scheduledMinutes;
-            
-            // Calculate difference in minutes
-            const diffMinutes = scheduledTotalMinutes - nowTotalMinutes;
-            
-            if (diffMinutes <= 0) {
-                const minutesPassed = Math.abs(diffMinutes);
-                if (minutesPassed > 15) {
-                    return 'Time window expired';
-                }
-                return null;
-            }
-            
-            const hours = Math.floor(diffMinutes / 60);
-            const minutes = diffMinutes % 60;
-            
-            return `Available in ${hours > 0 ? `${hours}h ` : ''}${minutes}m`;
-        } catch (error) {
-            console.error('Error in getTimeDifferenceMessage:', error);
-            return 'Invalid time';
-        }
-    };
-
-    // Update the handleReminderComplete function
-    const handleReminderComplete = (reminderId) => {
-        const updatedReminders = reminders.map(reminder => {
-            if (reminder.id === reminderId) {
-                const now = new Date();
-                const scheduled = new Date(reminder.date);
-                
-                // Compare only hours and minutes
-                const nowHours = now.getHours();
-                const nowMinutes = now.getMinutes();
-                const scheduledHours = scheduled.getHours();
-                const scheduledMinutes = scheduled.getMinutes();
-                
-                // Convert to total minutes for comparison
-                const nowTotalMinutes = nowHours * 60 + nowMinutes;
-                const scheduledTotalMinutes = scheduledHours * 60 + scheduledMinutes;
-                
-                // Calculate difference in minutes
-                const diffMinutes = nowTotalMinutes - scheduledTotalMinutes;
-                
-                // Check if current time is within the 15-minute window
-                if (diffMinutes < 0 || diffMinutes > 15) {
-                    alert('You can only mark this medicine as taken within 15 minutes of its scheduled time.');
-                    return reminder;
-                }
-
-                return {
-                    ...reminder,
-                    completed: true,
-                    completedAt: new Date().toISOString(),
-                    status: diffMinutes <= 15 ? 'completed' : 'late'
-                };
-            }
-            return reminder;
-        });
-
-        setReminders(updatedReminders);
-        localStorage.setItem('reminders', JSON.stringify(updatedReminders));
-
-        // Emit event to notify medicine tracking
-        const event = new CustomEvent('remindersChanged', {
-            detail: { reminders: updatedReminders }
-        });
-        window.dispatchEvent(event);
     };
 
     const handleMarkAsCompleted = (reminderId) => {
@@ -518,18 +540,77 @@ const HealthRemainders = () => {
 
     // Update the reminder rendering to show completion status and manual dosage
     const renderReminderStatus = (reminder) => {
-        const medicineReminders = reminders.filter(r => r.medicineName === reminder.medicineName);
-        const completedCount = medicineReminders.filter(r => r.completed).length;
-        const totalCount = medicineReminders.length;
+        const isAvailable = canMarkAsTaken(reminder.date);
+        const timeMessage = getTimeDifferenceMessage(reminder.date);
+        const now = new Date();
+        const reminderDate = new Date(reminder.date);
+        const isSameDay = now.toDateString() === reminderDate.toDateString();
 
+        // If the reminder is completed, show a green tick
+        if (reminder.completed) {
+            return (
+                <div className="flex items-center gap-2">
+                    <FaCheck className="text-green-500" />
+                    <FaTimes 
+                        className="text-red-500 cursor-pointer hover:text-red-600" 
+                        onClick={() => handleDeleteReminder(reminder.id)}
+                    />
+                </div>
+            );
+        }
+
+        // If it's not the same day or time window has expired, show disabled state
+        if (!isSameDay || timeMessage === 'Time window expired') {
+            return (
+                <div className="flex items-center gap-2">
+                    <button
+                        className="text-gray-400 cursor-not-allowed"
+                        disabled
+                        title={!isSameDay ? "Wrong date" : "Time window expired"}
+                    >
+                        <FaCheck />
+                    </button>
+                    <FaTimes 
+                        className="text-red-500 cursor-pointer hover:text-red-600" 
+                        onClick={() => handleDeleteReminder(reminder.id)}
+                    />
+                </div>
+            );
+        }
+
+        // If it's available to take, show active tick
+        if (isAvailable) {
+            return (
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => handleReminderComplete(reminder.id)}
+                        className="text-green-500 hover:text-green-600 transition-colors"
+                        title="Mark as taken"
+                    >
+                        <FaCheck />
+                    </button>
+                    <FaTimes 
+                        className="text-red-500 cursor-pointer hover:text-red-600" 
+                        onClick={() => handleDeleteReminder(reminder.id)}
+                    />
+                </div>
+            );
+        }
+
+        // If it's future time on the same day, show waiting state
         return (
-            <div className="text-sm text-gray-600">
-                {reminder.dosage && (
-                    <p>Dosage: {reminder.dosage}</p>
-                )}
-                {totalCount > 1 && (
-                    <p>{completedCount}/{totalCount} dosages completed</p>
-                )}
+            <div className="flex items-center gap-2">
+                <button
+                    className="text-yellow-500 cursor-not-allowed"
+                    disabled
+                    title={timeMessage}
+                >
+                    <FaClock />
+                </button>
+                <FaTimes 
+                    className="text-red-500 cursor-pointer hover:text-red-600" 
+                    onClick={() => handleDeleteReminder(reminder.id)}
+                />
             </div>
         );
     };
@@ -596,33 +677,6 @@ const HealthRemainders = () => {
                                                     </p>
                                                 )}
                                                 {renderReminderStatus(reminder)}
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <button
-                                                    onClick={() => handleReminderComplete(reminder.id)}
-                                                    disabled={!canMark || reminder.completed || isExpired}
-                                                    className={`p-2 rounded-full ${
-                                                        !canMark || reminder.completed || isExpired
-                                                            ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                                                            : 'bg-green-500 text-white hover:bg-green-600'
-                                                    }`}
-                                                    title={
-                                                        isExpired 
-                                                            ? "Time window expired" 
-                                                            : !canMark 
-                                                            ? "Cannot mark as taken before scheduled time" 
-                                                            : "Mark as taken"
-                                                    }
-                                                >
-                                                    <FaCheck />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDeleteReminder(reminder.id)}
-                                                    className="p-2 rounded-full bg-red-500 text-white hover:bg-red-600"
-                                                    title="Delete reminder"
-                                                >
-                                                    <FaTimes />
-                                                </button>
                                             </div>
                                         </div>
                                     </div>

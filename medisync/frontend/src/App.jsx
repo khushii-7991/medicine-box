@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import React from 'react';
 import './App.css'
 import Landing from './components/landing';
@@ -58,6 +58,8 @@ function App() {
       <Routes>
         {/* Public routes */}
         <Route path='/' element={<Landing />} />
+        <Route path="/login" element={<Navigate to="/login/patient" replace />} />
+        {/* <Route path="/profile" element={<Navigate to="/patrofile" replace />} /> */}
         <Route path="/find-doctor" element={<FindDoctor />} />
         <Route path='/login/doctor' element={<LoginDoctor />} />
         <Route path='/login/patient' element={<LoginPatient />} />
@@ -153,13 +155,6 @@ function App() {
           <ProtectedPatientRoute>
             <Layout userType="patient">
               <MedicineInfo />
-            </Layout>
-          </ProtectedPatientRoute>
-        } />
-        <Route path='/find-doctor' element={
-          <ProtectedPatientRoute>
-            <Layout userType="patient">
-              <FindDoctor />
             </Layout>
           </ProtectedPatientRoute>
         } />
