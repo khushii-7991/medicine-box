@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Navbar from './Navbar';
 import { Link } from 'react-router-dom';
-import { FaHome, FaCalendarAlt, FaBell, FaUser, FaFileMedical, FaBook, FaUpload, FaAmbulance, FaPills, FaInfoCircle } from 'react-icons/fa';
+import { FaHome, FaCalendarAlt, FaBell, FaUser, FaFileMedical, FaBook, FaUpload, FaAmbulance, FaPills, FaInfoCircle, FaUserMd, FaExclamationTriangle } from 'react-icons/fa';
 
 // Layout component that wraps authenticated pages
 const Layout = ({ children, userType }) => {
@@ -69,6 +69,8 @@ const Layout = ({ children, userType }) => {
 
   const doctorMenuItems = [
     { path: '/doctor', icon: <FaHome />, label: 'Dashboard', exact: true },
+    { path: '/doctor-profile', icon: <FaUserMd />, label: 'Doctor Profile' },
+    { path: '/emergency-schedule', icon: <FaExclamationTriangle />, label: 'Emergency Schedule' },
     { path: '/add-prescription', icon: <FaFileMedical />, label: 'Add Prescription' },
     { path: '/view-appointments', icon: <FaCalendarAlt />, label: 'View Appointments' },
     { path: '/reports', icon: <FaFileMedical />, label: 'Reports' },

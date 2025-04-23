@@ -28,6 +28,7 @@ import Profile from './components/Profile';
 import { Toaster } from 'react-hot-toast';
 import MedicineTracking from './components/MedicineTracking';
 import MedicineInfo from './components/MedicineInfo';
+import DoctorEmergencySchedule from './components/DoctorEmergencySchedule';
 
 function App() {
 
@@ -206,6 +207,13 @@ function App() {
           <ProtectedDoctorRoute>
             <Layout userType="doctor">
               <PatientList />
+            </Layout>
+          </ProtectedDoctorRoute>
+        } />
+        <Route path='/emergency-schedule' element={
+          <ProtectedDoctorRoute>
+            <Layout userType="doctor">
+              <DoctorEmergencySchedule />
             </Layout>
           </ProtectedDoctorRoute>
         } />

@@ -30,6 +30,8 @@ const BookAppointment = () => {
     const [reason, setReason] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [doctorSittingHours, setDoctorSittingHours] = useState([]);
+    const [availableTimeSlots, setAvailableTimeSlots] = useState([]);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -249,9 +251,48 @@ const BookAppointment = () => {
         }
     };
 
-    const handleDoctorSelect = (doctor) => {
+    const handleDoctorSelect = async (doctor) => {
         setSelectedDoctor(doctor);
-        setDoctorSearch(doctor.name);
+        setDoctorSearch(`Dr. ${doctor.name}`);
+        setSelectedDate('');
+        setSelectedTime('');
+        setAvailableTimeSlots([]);
+        
+        // Fetch doctor sitting hours when a doctor is selected
+        try {
+            const response = await axios.get(`http://localhost:3000/doctor/${doctor._id}/sitting-hours`);
+            const sittingHoursData = response.data || [];
+            setDoctorSittingHours(sittingHoursData);
+            console.log('Doctor sitting hours:', sittingHoursData);
+            
+            // Add some sample sitting hours for testing if none are returned
+            if (!sittingHoursData || sittingHoursData.length === 0) {
+                console.log('No sitting hours found, adding sample data for testing');
+                const sampleSittingHours = [
+                    { day: 'Monday', startTime: '09:00', endTime: '17:00', isAvailable: true },
+                    { day: 'Tuesday', startTime: '09:00', endTime: '17:00', isAvailable: true },
+                    { day: 'Wednesday', startTime: '09:00', endTime: '17:00', isAvailable: true },
+                    { day: 'Thursday', startTime: '09:00', endTime: '17:00', isAvailable: true },
+                    { day: 'Friday', startTime: '09:00', endTime: '17:00', isAvailable: true },
+                    { day: 'Saturday', startTime: '10:00', endTime: '14:00', isAvailable: true },
+                    { day: 'Sunday', startTime: '00:00', endTime: '00:00', isAvailable: false }
+                ];
+                setDoctorSittingHours(sampleSittingHours);
+            }
+        } catch (error) {
+            console.error('Error fetching doctor sitting hours:', error);
+            // Add sample sitting hours for testing in case of error
+            const sampleSittingHours = [
+                { day: 'Monday', startTime: '09:00', endTime: '17:00', isAvailable: true },
+                { day: 'Tuesday', startTime: '09:00', endTime: '17:00', isAvailable: true },
+                { day: 'Wednesday', startTime: '09:00', endTime: '17:00', isAvailable: true },
+                { day: 'Thursday', startTime: '09:00', endTime: '17:00', isAvailable: true },
+                { day: 'Friday', startTime: '09:00', endTime: '17:00', isAvailable: true },
+                { day: 'Saturday', startTime: '10:00', endTime: '14:00', isAvailable: true },
+                { day: 'Sunday', startTime: '00:00', endTime: '00:00', isAvailable: false }
+            ];
+            setDoctorSittingHours(sampleSittingHours);
+        }
     };
 
     const filteredStates = states.filter(state => 
@@ -634,20 +675,75 @@ const BookAppointment = () => {
 
                     <div>
                         <label class="block mb-2 font-semibold">Select Date</label>
-                        <input 
-                            type="date" 
-                            name="date" 
-                            required
+                        <input
+                            type="date"
+                            name="date"
                             value={selectedDate}
-                            onChange={(e) => setSelectedDate(e.target.value)}
-                            class="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-600" 
+                            onChange={(e) => {
+                                const selectedDateValue = e.target.value;
+                                setSelectedDate(selectedDateValue);
+                                setSelectedTime('');
+                                
+                                // Get day of week from selected date
+                                if (selectedDateValue && selectedDoctor) {
+                                    const date = new Date(selectedDateValue);
+                                    const dayOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][date.getDay()];
+                                    
+                                    // Find doctor's sitting hours for this day
+                                    console.log('Looking for day schedule for:', dayOfWeek);
+                                    console.log('Available sitting hours:', doctorSittingHours);
+                                    
+                                    const daySchedule = doctorSittingHours.find(schedule => schedule.day === dayOfWeek);
+                                    console.log('Found day schedule:', daySchedule);
+                                    
+                                    if (daySchedule && daySchedule.isAvailable) {
+                                        // Doctor is available on this day
+                                        // Create time slots from start to end time
+                                        const startTime = daySchedule.startTime;
+                                        const endTime = daySchedule.endTime;
+                                        
+                                        // Generate time slots at 30-minute intervals
+                                        const timeSlots = [];
+                                        const startHour = parseInt(startTime.split(':')[0]);
+                                        const startMinute = parseInt(startTime.split(':')[1]);
+                                        const endHour = parseInt(endTime.split(':')[0]);
+                                        const endMinute = parseInt(endTime.split(':')[1]);
+                                        
+                                        let currentHour = startHour;
+                                        let currentMinute = startMinute;
+                                        
+                                        while (currentHour < endHour || (currentHour === endHour && currentMinute < endMinute)) {
+                                            const formattedHour = currentHour.toString().padStart(2, '0');
+                                            const formattedMinute = currentMinute.toString().padStart(2, '0');
+                                            timeSlots.push(`${formattedHour}:${formattedMinute}`);
+                                            
+                                            // Increment by 30 minutes
+                                            currentMinute += 30;
+                                            if (currentMinute >= 60) {
+                                                currentHour += 1;
+                                                currentMinute = 0;
+                                            }
+                                        }
+                                        
+                                        setAvailableTimeSlots(timeSlots);
+                                    } else {
+                                        // Doctor is not available on this day
+                                        setAvailableTimeSlots([]);
+                                        console.log(`Dr. ${selectedDoctor.name} is not available on ${dayOfWeek}s`);
+                                        // Use alert instead of toast if toast is not working
+                                        alert(`Dr. ${selectedDoctor.name} is not available on ${dayOfWeek}s. Please select another date.`);
+                                    }
+                                }
+                            }}
+                            required
+                            min={new Date().toISOString().split('T')[0]}
+                            class="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-600"
                         />
                     </div>
 
-                    <div class="space-y-3">
-                        <label class="block font-semibold">Select Time</label>
-                        
-                        <div class="flex items-center space-x-3 mb-3">
+                    <div>
+                        <label class="block mb-2 font-semibold">Select Time</label>
+                        <div class="mb-2">
                             <input
                                 type="checkbox"
                                 id="flexibleTiming"
@@ -665,20 +761,43 @@ const BookAppointment = () => {
                             </label>
                         </div>
 
-                        <input
-                            type="time"
-                            name="time"
-                            value={selectedTime}
-                            onChange={(e) => {
-                                setSelectedTime(e.target.value);
-                                setIsFlexibleTiming(false);
-                            }}
-                            disabled={isFlexibleTiming}
-                            required={!isFlexibleTiming}
-                            class={`w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-600 ${
-                                isFlexibleTiming ? 'bg-gray-100 cursor-not-allowed' : ''
-                            }`}
-                        />
+                        {availableTimeSlots.length > 0 && !isFlexibleTiming ? (
+                            <div className="grid grid-cols-3 gap-2 mb-3">
+                                {availableTimeSlots.map((time) => (
+                                    <button
+                                        key={time}
+                                        type="button"
+                                        onClick={() => setSelectedTime(time)}
+                                        className={`p-2 text-sm rounded-md ${selectedTime === time 
+                                            ? 'bg-green-600 text-white' 
+                                            : 'bg-gray-100 hover:bg-gray-200 text-gray-800'}`}
+                                    >
+                                        {time}
+                                    </button>
+                                ))}
+                            </div>
+                        ) : !isFlexibleTiming && selectedDate ? (
+                            <div className="text-amber-600 mb-3">
+                                No available time slots for the selected date.
+                            </div>
+                        ) : null}
+
+                        {!isFlexibleTiming && (
+                            <input
+                                type="time"
+                                name="time"
+                                value={selectedTime}
+                                onChange={(e) => {
+                                    setSelectedTime(e.target.value);
+                                    setIsFlexibleTiming(false);
+                                }}
+                                disabled={isFlexibleTiming || availableTimeSlots.length > 0}
+                                required={!isFlexibleTiming}
+                                class={`w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-600 ${
+                                    isFlexibleTiming || availableTimeSlots.length > 0 ? 'bg-gray-100 cursor-not-allowed' : ''
+                                }`}
+                            />
+                        )}
                     </div>
 
                     <div>

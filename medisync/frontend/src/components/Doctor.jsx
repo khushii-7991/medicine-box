@@ -5,6 +5,7 @@ import {
     FiActivity, FiClipboard, FiLogOut, FiMenu, FiBell, FiSettings
 } from 'react-icons/fi';
 import Navbar from './Navbar';
+import DoctorSittingHoursView from './DoctorSittingHoursView';
 import { 
     AreaChart, Area, BarChart, Bar, PieChart, Pie, LineChart, Line,
     XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -519,10 +520,9 @@ const Doctor = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+        <div className="bg-gray-100 min-h-screen">
             <Navbar userType="doctor" />
-            
-            <div className="max-w-7xl mx-auto pt-20 px-4 sm:px-6 lg:px-8">
+            <div className="container mx-auto px-4 py-8 pt-24 sm:px-6 lg:px-8">
                 {/* Welcome header */}
                 <div className="mb-8 animate-fadeIn">
                     <h2 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
@@ -532,6 +532,16 @@ const Doctor = () => {
                         {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                     </p>
                 </div>
+                
+                {/* Doctor Sitting Hours */}
+                {doctorInfo && doctorInfo._id && (
+                    <div className="mb-8 animate-fadeIn">
+                        <h2 className="text-xl font-bold mb-4">Hospital Sitting Hours</h2>
+                        <div className="bg-white shadow-lg rounded-lg border border-blue-50 p-4">
+                            <DoctorSittingHoursView doctorId={doctorInfo._id} />
+                        </div>
+                    </div>
+                )}
                 
                 {/* Stats overview */}
                 <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
